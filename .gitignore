@@ -1,0 +1,9 @@
+node_modules
+dist
+.DS_Store
+*.local
+.vite
+
+# 大视频文件不进仓库（GitHub 单文件限 100M）
+# 本地把 mp4 放到 public/videos/ 即可，文件名见 README
+public/videos/*.mp4
