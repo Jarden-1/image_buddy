@@ -3,6 +3,7 @@ import {
   VISUAL_ANALYSIS_GUIDE,
   VISUAL_GIFT_SKILL_CORE,
 } from "./skill-context";
+import JSON5 from "json5";
 import type {
   Offer,
   SelectionResult,
@@ -77,7 +78,11 @@ function parseModelJson<T>(raw: string): T {
     try {
       return JSON.parse(repaired) as T;
     } catch {
-      throw originalError;
+      try {
+        return JSON5.parse(repaired) as T;
+      } catch {
+        throw originalError;
+      }
     }
   }
 }
@@ -371,15 +376,17 @@ export async function selectGiftCandidates(input: {
           "候选支持多种 strategy 时，选择最符合其实际价值、且能保留其他强候选策略覆盖的归类。",
           "ownedOrShown 中 status=owned 的同类物品视为已经拥有，禁止再次推荐；收纳、展示、耗材、配件或明确升级方案可以保留，但理由必须说明增量价值。",
           "共同体验必须直接承接一个已识别兴趣，或有视觉证据明确支持手作、户外、音乐、运动等对应活动；仅凭伴侣关系、城市或场合不得选择。",
+          "相同 strategy 有多个候选时，优先选择与 interests、searchQueries 直接共享兴趣概念的方案；不要只因画面中出现某个普通物件，就推荐该物件的同类。",
           "每个结果的 evidence 必须引用视觉分析中真实出现的 observation 或 interest，不能只写城市、预算或场合。",
+          "严格控制输出长度：summary 不超过35字；reason 不超过45字；每个结果只给1条 evidence，截取10-24字的关键证据；caveat 不超过35字；videoQueries 只给1条且不超过15字。",
           "只输出 JSON：",
-          '{"summary":"一句话概括","gifts":[{"offerId":"候选ID","strategy":"interest_direct|interest_adjacent|shared_experience","reason":"不超过60字","evidence":["证据"],"caveat":null,"videoQueries":["短语"]}]}',
+          '{"summary":"一句话概括","gifts":[{"offerId":"候选ID","strategy":"interest_direct|interest_adjacent|shared_experience","reason":"不超过45字","evidence":["10-24字关键证据"],"caveat":null,"videoQueries":["一条短语"]}]}',
         ].join("\n"),
       },
     ],
     enable_thinking: false,
     temperature: 0.2,
-    max_tokens: 520,
+    max_tokens: 620,
     response_format: { type: "json_object" },
   });
 
