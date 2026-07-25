@@ -185,6 +185,9 @@ export function matchVideos(input: {
     ...input.analysis.interests,
     ...input.analysis.searchQueries,
   ]);
+  const offerConcepts = normalizedConcepts(input.offer.interestTags).filter(
+    (concept) => !genericVideoTags.has(concept),
+  );
 
   const ranked = videos
     .filter((video) => !directIds.has(video.id))
@@ -199,6 +202,14 @@ export function matchVideos(input: {
       const specificTagHits = matchingTags.filter(
         (tag) => !genericVideoTags.has(tag),
       ).length;
+      const offerSpecificHits = video.tags.filter((tag) => {
+        if (genericVideoTags.has(tag)) return false;
+        const normalizedTag = normalizeInterestConcept(tag);
+        return offerConcepts.some(
+          (concept) =>
+            normalizedTag.includes(concept) || concept.includes(normalizedTag),
+        );
+      }).length;
       const roleBonus =
         video.contentRole === "product_proof"
           ? 0.16
@@ -207,9 +218,13 @@ export function matchVideos(input: {
             : 0.04;
       return {
         video,
-        isRelevant: specificTagHits >= 1 && matchingTags.length >= 1,
+        isRelevant:
+          specificTagHits >= 1 &&
+          matchingTags.length >= 1 &&
+          offerSpecificHits >= 1,
         score:
-          specificTagHits * 0.62 +
+          offerSpecificHits * 0.72 +
+          specificTagHits * 0.42 +
           matchingTags.length * 0.16 +
           video.qualityScore * 0.18 +
           roleBonus,

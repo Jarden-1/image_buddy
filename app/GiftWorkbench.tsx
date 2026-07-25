@@ -151,7 +151,15 @@ const demoFriends = [
   },
 ] as const;
 
-const occasions = ["生日", "纪念日", "七夕", "日常惊喜"] as const;
+const occasions = [
+  "生日",
+  "纪念日",
+  "七夕",
+  "日常惊喜",
+  "毕业",
+  "搬家",
+  "久别重逢",
+] as const;
 const budgetOptions = [
   { label: "¥0–300", min: 0, max: 300 },
   { label: "¥100–800", min: 100, max: 800 },

@@ -753,5 +753,41 @@
     "qualityScore": 0.83,
     "sourceRef": "demo_search_query",
     "verifiedAt": "2026-07-26"
+  },
+  {
+    "id": "video-cq-baking-zhixi",
+    "title": "江北知喜 Cake·56 元双人黄油饼干 DIY",
+    "author": "知喜 Cake 蛋糕 DIY·甜品台",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/video/7665195432498406538",
+    "tags": ["重庆", "烘焙", "饼干", "手作", "双人体验"],
+    "contentRole": "product_proof",
+    "qualityScore": 0.9,
+    "sourceRef": "douyin_verified_result",
+    "verifiedAt": "2026-07-26"
+  },
+  {
+    "id": "video-cq-baking-jiuyue",
+    "title": "观音桥玖月·88 元双人 5 寸蛋糕 DIY",
+    "author": "重庆小辣椒",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/video/7626342569744098127",
+    "tags": ["重庆", "观音桥", "烘焙", "蛋糕", "双人体验"],
+    "contentRole": "product_proof",
+    "qualityScore": 0.86,
+    "sourceRef": "douyin_verified_result",
+    "verifiedAt": "2026-07-26"
+  },
+  {
+    "id": "video-cq-terrarium-zhiyu",
+    "title": "重庆植屿生活·迷你玻璃盆栽与微景观 DIY",
+    "author": "暖暖向前跑",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/video/7657181373198974961",
+    "tags": ["重庆", "植物", "微景观", "盆栽", "手作"],
+    "contentRole": "product_proof",
+    "qualityScore": 0.85,
+    "sourceRef": "douyin_verified_result",
+    "verifiedAt": "2026-07-26"
   }
 ]

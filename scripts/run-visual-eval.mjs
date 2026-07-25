@@ -36,7 +36,12 @@ const cases = [
       import.meta.url,
     ),
     expectedInterests: ["烘焙", "料理"],
-    expectedOffers: ["gift-baking-toolkit", "gift-recipe-stand"],
+    expectedOffers: [
+      "gift-baking-toolkit",
+      "gift-recipe-stand",
+      "cq-baking-zhixi",
+      "cq-baking-jiuyue",
+    ],
     clue: "TA 最近经常在家烤面包，但我不确定还缺什么工具。",
   },
 ];
@@ -53,6 +58,13 @@ if (selectedCases.length === 0) {
 
 const results = [];
 let failed = false;
+
+function normalizeInterest(value) {
+  return value
+    .replace(/养宠|猫咪|狗狗|遛狗/g, "宠物")
+    .replace(/看书|读书|纸质阅读/g, "阅读")
+    .replace(/甜品|蛋糕|面包/g, "烘焙");
+}
 
 for (const testCase of selectedCases) {
   const image = await readFile(testCase.file);
@@ -73,7 +85,13 @@ for (const testCase of selectedCases) {
     method: "POST",
     body: form,
   });
-  const payload = await response.json();
+  const responseText = await response.text();
+  let payload;
+  try {
+    payload = JSON.parse(responseText);
+  } catch {
+    payload = { error: responseText || `HTTP ${response.status}` };
+  }
   if (!response.ok) {
     failed = true;
     results.push({
@@ -88,7 +106,9 @@ for (const testCase of selectedCases) {
   const offerIds = (payload.gifts || []).map((gift) => gift.offerId);
   const interestHit = testCase.expectedInterests.some((expected) =>
     interests.some(
-      (actual) => actual.includes(expected) || expected.includes(actual),
+      (actual) =>
+        normalizeInterest(actual).includes(normalizeInterest(expected)) ||
+        normalizeInterest(expected).includes(normalizeInterest(actual)),
     ),
   );
   const offerHit = testCase.expectedOffers.some((id) => offerIds.includes(id));

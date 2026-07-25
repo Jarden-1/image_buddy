@@ -64,7 +64,22 @@ function parseModelJson<T>(raw: string): T {
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
     .replace(/\s*```$/, "");
-  return JSON.parse(normalized) as T;
+  try {
+    return JSON.parse(normalized) as T;
+  } catch (originalError) {
+    const repaired = normalized
+      .replace(/[“”]/g, '"')
+      .replace(/[‘’]/g, "'")
+      .replace(/,\s*([}\]])/g, "$1")
+      .replace(/}\s*{/g, "},{")
+      .replace(/]\s*{/g, "],{")
+      .replace(/"\s*\n\s*"/g, '","');
+    try {
+      return JSON.parse(repaired) as T;
+    } catch {
+      throw originalError;
+    }
+  }
 }
 
 function normalizeVisualAnalysis(value: VisualAnalysis): VisualAnalysis {
@@ -157,12 +172,7 @@ function sharedExperienceHasInterestEvidence(
     [
       analysis.sceneSummary,
       ...analysis.interests,
-      ...analysis.aesthetics,
-      ...analysis.searchQueries,
-      ...analysis.evidence.flatMap((item) => [
-        item.observation,
-        item.implication,
-      ]),
+      ...analysis.evidence.map((item) => item.observation),
     ].join(" "),
   );
 
