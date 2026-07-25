@@ -6,6 +6,64 @@ const baseUrl = (
 
 const cases = [
   {
+    name: "摄影桌面",
+    file: new URL(
+      "../tests/fixtures/visual-eval/01-photography-desk.jpg",
+      import.meta.url,
+    ),
+    expectedInterests: ["摄影", "胶片", "拍照"],
+    expectedOffers: [
+      "gift-camera-strap",
+      "gift-photo-book",
+      "cq-film-citywalk",
+    ],
+    clue: "TA 经常带相机出门拍照，但我不清楚镜头和滤镜规格。",
+  },
+  {
+    name: "游戏工位",
+    file: new URL(
+      "../tests/fixtures/visual-eval/02-gaming-desk.jpg",
+      import.meta.url,
+    ),
+    expectedInterests: ["游戏", "电竞", "科幻"],
+    expectedOffers: [
+      "gift-gaming-deskmat",
+      "gift-pixel-display",
+      "gift-controller-stand",
+      "cq-vr-date",
+    ],
+    clue: "TA 平时喜欢游戏和科幻，但桌上的外设大多已经有了。",
+  },
+  {
+    name: "半马备赛",
+    file: new URL(
+      "../tests/fixtures/visual-eval/03-running-entryway.jpg",
+      import.meta.url,
+    ),
+    expectedInterests: ["跑步", "半马", "马拉松"],
+    expectedOffers: [
+      "gift-mini-massage-gun",
+      "gift-night-running-light",
+      "gift-race-memory-frame",
+    ],
+    clue: "TA 最近在准备半程马拉松，画面里的装备基本都已经拥有。",
+  },
+  {
+    name: "香氛卧室",
+    file: new URL(
+      "../tests/fixtures/visual-eval/04-fragrance-bedroom.jpg",
+      import.meta.url,
+    ),
+    expectedInterests: ["香氛", "香水", "气味"],
+    expectedOffers: [
+      "gift-fragrance-discovery",
+      "gift-hand-balm",
+      "gift-incense-holder",
+      "cq-fragrance-workshop",
+    ],
+    clue: "TA 喜欢香氛，但我不知道具体偏好的香型。",
+  },
+  {
     name: "阅读卧室",
     file: new URL(
       "../tests/fixtures/visual-eval/05-reading-bedroom.jpg",
@@ -63,7 +121,11 @@ function normalizeInterest(value) {
   return value
     .replace(/养宠|猫咪|狗狗|遛狗/g, "宠物")
     .replace(/看书|读书|纸质阅读/g, "阅读")
-    .replace(/甜品|蛋糕|面包/g, "烘焙");
+    .replace(/甜品|蛋糕|面包/g, "烘焙")
+    .replace(/马拉松|半马|路跑/g, "跑步")
+    .replace(/拍照|胶片摄影|影像/g, "摄影")
+    .replace(/电竞|电子游戏|主机游戏/g, "游戏")
+    .replace(/香水|香薰|气味/g, "香氛");
 }
 
 for (const testCase of selectedCases) {
@@ -113,6 +175,7 @@ for (const testCase of selectedCases) {
   );
   const offerHit = testCase.expectedOffers.some((id) => offerIds.includes(id));
   const videosRelevant = (payload.gifts || []).every((gift) =>
+    gift.videos.length === 2 &&
     gift.videos.every(
       (video) =>
         gift.offer.relatedVideoIds.includes(video.id) ||
@@ -130,6 +193,7 @@ for (const testCase of selectedCases) {
     name: testCase.name,
     ok,
     interests,
+    ownedOrShown: payload.analysis?.ownedOrShown || [],
     offers: offerIds,
     videoCounts: (payload.gifts || []).map((gift) => gift.videos.length),
     totalMs: payload.timings?.totalMs,
