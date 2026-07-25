@@ -35,6 +35,15 @@ export interface Offer {
   sourcePlatform: string;
   sourceUrl: string;
   imageUrl: string;
+  merchant?: string;
+  sourceType?:
+    | "official_product"
+    | "retail_search"
+    | "douyin_video"
+    | "local_life_demo";
+  priceStatus?: "verified" | "estimated" | "snapshot";
+  priceNote?: string;
+  verifiedAt?: string;
   interestTags: string[];
   giftStrategies: GiftStrategy[];
   searchText: string;
@@ -56,6 +65,8 @@ export interface VideoItem {
   tags: string[];
   contentRole: "gift_advice" | "product_proof" | "interest_content";
   qualityScore: number;
+  sourceRef?: string;
+  verifiedAt?: string;
 }
 
 export interface SelectedGift {
@@ -71,4 +82,3 @@ export interface SelectionResult {
   summary: string;
   gifts: SelectedGift[];
 }
-
