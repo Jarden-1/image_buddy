@@ -84,7 +84,7 @@ function normalizeVisualAnalysis(value: VisualAnalysis): VisualAnalysis {
       ? value.aesthetics.slice(0, 3)
       : [],
     ownedOrShown: Array.isArray(value.ownedOrShown)
-      ? value.ownedOrShown.slice(0, 4).map((entry) => {
+      ? value.ownedOrShown.slice(0, 6).map((entry) => {
           const rawStatus = String(entry.status || "unknown").toLowerCase();
           const status =
             rawStatus === "owned" || rawStatus === "used"
@@ -161,6 +161,51 @@ function sharedExperienceHasInterestEvidence(
   });
 }
 
+const COMPLEMENTARY_TITLE_MARKERS = [
+  "收纳",
+  "展示",
+  "支架",
+  "底座",
+  "保护",
+  "配件",
+  "腕带",
+  "背带",
+  "相纸",
+  "照片书",
+  "相框",
+  "小样",
+  "探索",
+];
+
+function normalizeItemName(value: string): string {
+  return value
+    .replace(/蓝牙|无线|有线|机械|主力|专业|轻量|便携|迷你|智能/g, "")
+    .replace(/耳麦/g, "耳机")
+    .replace(/[^\p{L}\p{N}]/gu, "")
+    .toLowerCase();
+}
+
+function duplicatesOwnedItem(offer: Offer, analysis: VisualAnalysis): boolean {
+  if (
+    COMPLEMENTARY_TITLE_MARKERS.some((marker) =>
+      offer.title.includes(marker),
+    )
+  ) {
+    return false;
+  }
+  const normalizedTitle = normalizeItemName(offer.title);
+  return analysis.ownedOrShown
+    .filter((entry) => entry.status === "owned")
+    .some((entry) => {
+      const normalizedItem = normalizeItemName(entry.item);
+      return (
+        normalizedItem.length >= 2 &&
+        (normalizedTitle.includes(normalizedItem) ||
+          normalizedItem.includes(normalizedTitle))
+      );
+    });
+}
+
 export async function analyzeGiftImage(input: {
   imageDataUrl: string;
   occasion: string;
@@ -216,7 +261,8 @@ export async function analyzeGiftImage(input: {
               input.clueContext
                 ? `用户补充：${input.clueContext}`
                 : "用户没有补充说明",
-              "保持极简：证据不超过3条，兴趣不超过4个，审美不超过3个，物品不超过4个，避坑不超过4条，每个字符串不超过24个汉字。",
+              "保持极简：证据不超过3条，兴趣不超过4个，审美不超过3个，物品不超过6个，避坑不超过4条，每个字符串不超过24个汉字。",
+              "ownedOrShown 优先完整盘点画面中可见的装备、配件和收纳物，以避免后续重复推荐；仅在确有依据时标为 owned。",
               "请只输出一个 JSON 对象，不要输出 Markdown。",
               `字段结构示例：${JSON.stringify(schemaExample)}`,
             ].join("\n"),
@@ -260,7 +306,10 @@ export async function selectGiftCandidates(input: {
   city: string;
 }): Promise<SelectionResult> {
   const config = getConfig();
-  const candidates = input.candidates.map(({ offer, recallScore }) => ({
+  const eligibleCandidates = input.candidates.filter(
+    ({ offer }) => !duplicatesOwnedItem(offer, input.analysis),
+  );
+  const candidates = eligibleCandidates.map(({ offer, recallScore }) => ({
     offerId: offer.id,
     title: offer.title,
     kind: offer.kind,
@@ -293,6 +342,8 @@ export async function selectGiftCandidates(input: {
           `视觉分析：${JSON.stringify(input.analysis)}`,
           `候选商品：${JSON.stringify(candidates)}`,
           "从候选中选出最多 3 个结果，每种 strategy 最多出现一次；没有合适项就少选，禁止为了凑满 3 个而降低相关性。",
+          "候选支持多种 strategy 时，选择最符合其实际价值、且能保留其他强候选策略覆盖的归类。",
+          "ownedOrShown 中 status=owned 的同类物品视为已经拥有，禁止再次推荐；收纳、展示、耗材、配件或明确升级方案可以保留，但理由必须说明增量价值。",
           "共同体验必须直接承接一个已识别兴趣，或有视觉证据明确支持手作、户外、音乐、运动等对应活动；仅凭伴侣关系、城市或场合不得选择。",
           "每个结果的 evidence 必须引用视觉分析中真实出现的 observation 或 interest，不能只写城市、预算或场合。",
           "只输出 JSON：",
@@ -311,7 +362,7 @@ export async function selectGiftCandidates(input: {
   );
   const allowedIds = new Set(candidates.map((candidate) => candidate.offerId));
   const offerById = new Map(
-    input.candidates.map(({ offer }) => [offer.id, offer]),
+    eligibleCandidates.map(({ offer }) => [offer.id, offer]),
   );
   const rawGiftCount = selection.gifts?.length || 0;
   const usedStrategies = new Set<string>();
@@ -319,7 +370,13 @@ export async function selectGiftCandidates(input: {
     .filter((gift) => allowedIds.has(gift.offerId))
     .filter((gift) => {
       const offer = offerById.get(gift.offerId);
-      if (!offer || !offer.giftStrategies.includes(gift.strategy)) return false;
+      if (
+        !offer ||
+        duplicatesOwnedItem(offer, input.analysis) ||
+        !offer.giftStrategies.includes(gift.strategy)
+      ) {
+        return false;
+      }
       if (gift.strategy !== "shared_experience") return true;
       return sharedExperienceHasInterestEvidence(offer, input.analysis);
     })

@@ -130,6 +130,46 @@
     "qualityScore": 0.8
   },
   {
+    "id": "video-gaming-deskmat",
+    "title": "游戏桌垫怎么选才不显得廉价",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/游戏桌垫%20桌搭%20怎么选",
+    "tags": ["游戏", "桌垫", "桌搭", "科幻"],
+    "contentRole": "product_proof",
+    "qualityScore": 0.83
+  },
+  {
+    "id": "video-pixel-display",
+    "title": "可自定义像素屏桌搭实测",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/像素屏%20桌搭%20实测",
+    "tags": ["游戏", "像素艺术", "桌搭"],
+    "contentRole": "product_proof",
+    "qualityScore": 0.82
+  },
+  {
+    "id": "video-coop-boardgame",
+    "title": "适合情侣的双人合作解谜桌游",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/情侣%20双人合作%20解谜桌游",
+    "tags": ["游戏", "解谜", "双人合作"],
+    "contentRole": "gift_advice",
+    "qualityScore": 0.86
+  },
+  {
+    "id": "video-vr-date",
+    "title": "重庆双人 VR 游戏体验实拍",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/重庆%20双人%20VR%20游戏体验",
+    "tags": ["游戏", "VR", "沉浸体验", "重庆"],
+    "contentRole": "interest_content",
+    "qualityScore": 0.82
+  },
+  {
     "id": "video-lego-date",
     "title": "适合两个人一起完成的拼搭约会",
     "author": "待采集",
@@ -228,6 +268,36 @@
     "tags": ["跑步", "运动", "实用礼物"],
     "contentRole": "gift_advice",
     "qualityScore": 0.87
+  },
+  {
+    "id": "video-race-memory",
+    "title": "把号码布和奖牌做成一面比赛记忆墙",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/马拉松%20号码布%20奖牌%20相框",
+    "tags": ["跑步", "马拉松", "赛事纪念"],
+    "contentRole": "interest_content",
+    "qualityScore": 0.85
+  },
+  {
+    "id": "video-running-recovery",
+    "title": "长跑训练后的便携恢复装备",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/跑步%20迷你筋膜枪%20恢复",
+    "tags": ["跑步", "马拉松", "运动恢复"],
+    "contentRole": "product_proof",
+    "qualityScore": 0.84
+  },
+  {
+    "id": "video-night-running",
+    "title": "夜跑安全灯和反光装备怎么选",
+    "author": "待采集",
+    "coverUrl": "",
+    "sourceUrl": "https://www.douyin.com/search/夜跑%20反光灯%20安全装备",
+    "tags": ["跑步", "夜跑", "运动安全"],
+    "contentRole": "gift_advice",
+    "qualityScore": 0.86
   },
   {
     "id": "video-camping-date",

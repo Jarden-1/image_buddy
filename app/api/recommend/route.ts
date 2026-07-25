@@ -96,10 +96,15 @@ export async function POST(request: Request) {
     const queryEmbeddings = await embedTexts(analysis.searchQueries);
     const candidates = recallOffers({
       queryEmbeddings,
+      queryTexts: [
+        ...analysis.searchQueries,
+        ...analysis.interests,
+        ...analysis.aesthetics,
+      ],
       budgetMin: input.budgetMin,
       budgetMax: input.budgetMax,
       city: input.city,
-      limit: 8,
+      limit: 12,
     });
     const recallMs = Math.round(performance.now() - recallStartedAt);
 
