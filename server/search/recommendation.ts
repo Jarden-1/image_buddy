@@ -12,6 +12,21 @@ import type {
 const offers = offersData as Offer[];
 const offerEmbeddings = offerEmbeddingsData as OfferEmbedding[];
 const videos = videosData as VideoItem[];
+const genericVideoTags = new Set([
+  "重庆",
+  "情侣体验",
+  "共同体验",
+  "情侣纪念",
+  "运动",
+  "户外",
+  "手作",
+  "家居",
+  "穿搭",
+  "探店",
+  "数码",
+  "实用礼物",
+  "礼物",
+]);
 
 function cosineSimilarity(a: number[], b: number[]): number {
   if (a.length !== b.length || a.length === 0) return 0;
@@ -93,17 +108,23 @@ export function matchVideos(input: {
 
   return videos
     .map((video) => {
-      const tagHits = video.tags.filter((tag) =>
+      const matchingTags = video.tags.filter((tag) =>
         [...queryTokens].some(
           (token) => tag.includes(token) || token.includes(tag),
         ),
+      );
+      const tagHits = matchingTags.length;
+      const specificTagHits = matchingTags.filter(
+        (tag) => !genericVideoTags.has(tag),
       ).length;
       const directBoost = directIds.has(video.id) ? 2 : 0;
       return {
         video,
+        isRelevant: directBoost > 0 || specificTagHits > 0,
         score: directBoost + tagHits * 0.4 + video.qualityScore * 0.2,
       };
     })
+    .filter((item) => item.isRelevant)
     .sort((a, b) => b.score - a.score)
     .slice(0, input.limit || 2)
     .map((item) => item.video);
@@ -112,4 +133,3 @@ export function matchVideos(input: {
 export function getOfferMap(): Map<string, Offer> {
   return new Map(offers.map((offer) => [offer.id, offer]));
 }
-

@@ -84,7 +84,21 @@ function normalizeVisualAnalysis(value: VisualAnalysis): VisualAnalysis {
       ? value.aesthetics.slice(0, 3)
       : [],
     ownedOrShown: Array.isArray(value.ownedOrShown)
-      ? value.ownedOrShown.slice(0, 4)
+      ? value.ownedOrShown.slice(0, 4).map((entry) => {
+          const rawStatus = String(entry.status || "unknown").toLowerCase();
+          const status =
+            rawStatus === "owned" || rawStatus === "used"
+              ? "owned"
+              : rawStatus === "wanted"
+                ? "wanted"
+                : rawStatus === "admired"
+                  ? "admired"
+                  : "unknown";
+          return {
+            item: String(entry.item || "未命名物品"),
+            status,
+          };
+        })
       : [],
     searchQueries: value.searchQueries
       .filter(Boolean)
@@ -95,6 +109,56 @@ function normalizeVisualAnalysis(value: VisualAnalysis): VisualAnalysis {
       : [],
     clarification: value.clarification || null,
   };
+}
+
+const GENERIC_INTEREST_TAGS = new Set([
+  "共同体验",
+  "情侣体验",
+  "情侣纪念",
+  "纪念日",
+  "生活方式",
+  "运动",
+  "户外",
+  "手作",
+  "家居",
+  "穿搭",
+  "审美",
+  "设计",
+  "探店",
+  "数码",
+  "实用",
+]);
+
+function normalizeInterestConcept(value: string): string {
+  return value
+    .replace(/香水|香薰|调香|气味/g, "香氛")
+    .replace(/马拉松|半马/g, "跑步")
+    .replace(/拍照|影像/g, "摄影")
+    .toLowerCase();
+}
+
+function sharedExperienceHasInterestEvidence(
+  offer: Offer,
+  analysis: VisualAnalysis,
+): boolean {
+  const corpus = normalizeInterestConcept(
+    [
+      analysis.sceneSummary,
+      ...analysis.interests,
+      ...analysis.aesthetics,
+      ...analysis.searchQueries,
+      ...analysis.evidence.flatMap((item) => [
+        item.observation,
+        item.implication,
+      ]),
+    ].join(" "),
+  );
+
+  return offer.interestTags.some((tag) => {
+    if (GENERIC_INTEREST_TAGS.has(tag)) return false;
+    const normalizedTag = normalizeInterestConcept(tag);
+    return normalizedTag.length >= 2 && corpus.includes(normalizedTag);
+  });
 }
 
 export async function analyzeGiftImage(input: {
@@ -228,7 +292,9 @@ export async function selectGiftCandidates(input: {
           `关系：伴侣；场合：${input.occasion}；预算：${input.budgetMin}-${input.budgetMax} 元；城市：${input.city}`,
           `视觉分析：${JSON.stringify(input.analysis)}`,
           `候选商品：${JSON.stringify(candidates)}`,
-          "从候选中选出最多 3 个不同策略的结果。",
+          "从候选中选出最多 3 个结果，每种 strategy 最多出现一次；没有合适项就少选，禁止为了凑满 3 个而降低相关性。",
+          "共同体验必须直接承接一个已识别兴趣，或有视觉证据明确支持手作、户外、音乐、运动等对应活动；仅凭伴侣关系、城市或场合不得选择。",
+          "每个结果的 evidence 必须引用视觉分析中真实出现的 observation 或 interest，不能只写城市、预算或场合。",
           "只输出 JSON：",
           '{"summary":"一句话概括","gifts":[{"offerId":"候选ID","strategy":"interest_direct|interest_adjacent|shared_experience","reason":"不超过60字","evidence":["证据"],"caveat":null,"videoQueries":["短语"]}]}',
         ].join("\n"),
@@ -244,12 +310,35 @@ export async function selectGiftCandidates(input: {
     result.choices[0].message.content,
   );
   const allowedIds = new Set(candidates.map((candidate) => candidate.offerId));
+  const offerById = new Map(
+    input.candidates.map(({ offer }) => [offer.id, offer]),
+  );
+  const rawGiftCount = selection.gifts?.length || 0;
+  const usedStrategies = new Set<string>();
   selection.gifts = (selection.gifts || [])
     .filter((gift) => allowedIds.has(gift.offerId))
+    .filter((gift) => {
+      const offer = offerById.get(gift.offerId);
+      if (!offer || !offer.giftStrategies.includes(gift.strategy)) return false;
+      if (gift.strategy !== "shared_experience") return true;
+      return sharedExperienceHasInterestEvidence(offer, input.analysis);
+    })
+    .filter((gift) => {
+      if (usedStrategies.has(gift.strategy)) return false;
+      usedStrategies.add(gift.strategy);
+      return true;
+    })
     .slice(0, 3);
 
   if (selection.gifts.length === 0) {
     throw new Error("SELECTION_OUTPUT_INVALID");
+  }
+  if (
+    selection.gifts.length < rawGiftCount ||
+    (selection.gifts.length < 3 && /三|3/.test(selection.summary || ""))
+  ) {
+    const interests = input.analysis.interests.slice(0, 2).join("、");
+    selection.summary = `围绕${interests || "画面中的明确兴趣"}，保留了 ${selection.gifts.length} 个更贴合且风险更低的方案。`;
   }
   return selection;
 }
