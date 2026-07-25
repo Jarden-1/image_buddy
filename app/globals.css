@@ -50,8 +50,22 @@ a {
   place-items: center;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 20%, rgb(255 255 255 / 0.05), transparent 36%),
-    #090909;
+    radial-gradient(circle at 50% 18%, rgb(255 255 255 / 0.09), transparent 34%),
+    linear-gradient(145deg, #161616, #050505 58%);
+}
+
+.iphone-device {
+  position: relative;
+  padding: 7px;
+  border: 1px solid #474747;
+  border-radius: 51px;
+  background:
+    linear-gradient(115deg, #181818 0 9%, #727272 11%, #1b1b1b 14% 86%, #6b6b6b 89%, #171717 92%);
+  box-shadow:
+    0 1px 0 #8a8a8a inset,
+    0 -1px 0 #000 inset,
+    0 42px 100px rgb(0 0 0 / 0.8),
+    0 0 0 1px #050505;
 }
 
 .phone-shell {
@@ -60,10 +74,80 @@ a {
   height: min(844px, 96dvh);
   overflow: hidden;
   background: #000;
-  border-radius: 42px;
+  border-radius: 44px;
   box-shadow:
-    0 0 0 2px rgb(255 255 255 / 0.08),
-    0 36px 90px rgb(0 0 0 / 0.72);
+    0 0 0 1px #000,
+    0 0 0 2px rgb(255 255 255 / 0.08);
+}
+
+.iphone-button {
+  position: absolute;
+  width: 4px;
+  border-radius: 3px 0 0 3px;
+  background: linear-gradient(to right, #222, #737373);
+  box-shadow: 0 1px 1px #8a8a8a inset;
+}
+
+.iphone-silent {
+  top: 94px;
+  left: -5px;
+  height: 30px;
+}
+
+.iphone-volume-up {
+  top: 145px;
+  left: -5px;
+  height: 58px;
+}
+
+.iphone-volume-down {
+  top: 216px;
+  left: -5px;
+  height: 58px;
+}
+
+.iphone-power {
+  top: 166px;
+  right: -5px;
+  width: 4px;
+  height: 88px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(to left, #222, #737373);
+}
+
+.dynamic-island {
+  position: absolute;
+  z-index: 42;
+  top: 10px;
+  left: 50%;
+  display: flex;
+  width: 112px;
+  height: 31px;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  padding-right: 10px;
+  border: 1px solid rgb(255 255 255 / 0.035);
+  border-radius: 999px;
+  background: #030303;
+  box-shadow: 0 2px 7px rgb(0 0 0 / 0.5);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.dynamic-island span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #243767, #071020 56%, #020205);
+  box-shadow: 0 0 0 1px #131313;
+}
+
+.dynamic-island i {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: #111;
 }
 
 .status-bar {
@@ -75,8 +159,8 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 38px;
-  padding: 0 22px;
+  height: 43px;
+  padding: 0 25px;
   font-size: 11px;
   pointer-events: none;
   text-shadow: 0 1px 4px #000;
@@ -158,7 +242,7 @@ a {
 .feed-top-nav {
   position: absolute;
   z-index: 31;
-  top: 42px;
+  top: 48px;
   right: 0;
   left: 0;
   display: flex;
@@ -322,6 +406,7 @@ a {
   border-radius: 15px;
   background: rgb(15 15 15 / 0.74);
   box-shadow: 0 12px 30px rgb(0 0 0 / 0.22);
+  animation: intent-in 0.42s cubic-bezier(0.2, 0.85, 0.25, 1.15) both;
   backdrop-filter: blur(18px);
 }
 
@@ -351,8 +436,10 @@ a {
 }
 
 .gift-capsule small {
-  color: rgb(255 255 255 / 0.48);
-  font-size: 10px;
+  color: var(--douyin-cyan);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
 }
 
 .gift-capsule b {
@@ -514,6 +601,73 @@ a {
 
 .input-flow {
   padding: 14px 16px 28px;
+}
+
+.intent-context {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgb(37 244 238 / 0.15);
+  border-radius: 14px;
+  background:
+    linear-gradient(110deg, rgb(37 244 238 / 0.09), transparent 52%),
+    rgb(255 255 255 / 0.035);
+}
+
+.intent-context > span {
+  display: grid;
+  width: 29px;
+  height: 29px;
+  flex: 0 0 auto;
+  color: var(--douyin-cyan);
+  border-radius: 9px;
+  background: rgb(37 244 238 / 0.1);
+  place-items: center;
+}
+
+.intent-context > div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.intent-context small {
+  color: var(--douyin-cyan);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.intent-context strong {
+  font-size: 12px;
+}
+
+.intent-context p {
+  margin: 1px 0 0;
+  color: rgb(255 255 255 / 0.4);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.intent-product_inspiration {
+  border-color: rgb(254 44 85 / 0.17);
+  background:
+    linear-gradient(110deg, rgb(254 44 85 / 0.09), transparent 52%),
+    rgb(255 255 255 / 0.035);
+}
+
+.intent-product_inspiration > span,
+.intent-manual > span {
+  color: var(--douyin-red);
+  background: rgb(254 44 85 / 0.1);
+}
+
+.intent-product_inspiration small,
+.intent-manual small {
+  color: #ff7892;
 }
 
 .entry-tabs {
@@ -1398,9 +1552,34 @@ a {
   }
 }
 
+@keyframes intent-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @media (max-width: 440px) {
   .douyin-demo {
     display: block;
+  }
+
+  .iphone-device {
+    width: 100vw;
+    height: 100dvh;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: #000;
+    box-shadow: none;
+  }
+
+  .iphone-button {
+    display: none;
   }
 
   .phone-shell {
@@ -1412,6 +1591,11 @@ a {
 }
 
 @media (max-height: 720px) and (min-width: 441px) {
+  .iphone-device {
+    padding: 6px;
+    border-radius: 38px;
+  }
+
   .phone-shell {
     height: 96dvh;
     width: calc(96dvh * 0.462);

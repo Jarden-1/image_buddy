@@ -42,20 +42,15 @@ type RecommendResponse = {
 
 type SheetStage = "input" | "loading" | "result";
 type EntryMode = "friend" | "upload";
+type IntentContext = {
+  source: "gift_advice" | "product_inspiration" | "manual";
+  eyebrow: string;
+  title: string;
+  description: string;
+  clue: string;
+};
 
 const feedVideos = [
-  {
-    id: "handmade",
-    src: "/videos/feed-handmade.m4v",
-    author: "晚安梵梵",
-    avatar: "梵",
-    description: "一个人送给另一个人最珍贵的礼物，是时间。",
-    tags: ["#手工DIY", "#礼物", "#我们俩"],
-    likes: "12.4万",
-    comments: "3281",
-    shares: "8.9万",
-    prompt: "看完还是不知道送什么？",
-  },
   {
     id: "guide",
     src: "/videos/feed-gift-guide.m4v",
@@ -66,7 +61,35 @@ const feedVideos = [
     likes: "8.7万",
     comments: "1924",
     shares: "5.2万",
-    prompt: "把 TA 的线索交给 AI",
+    prompt: "正在纠结送什么？",
+    triggerMode: "auto",
+    intent: {
+      source: "gift_advice",
+      eyebrow: "识别到送礼意图",
+      title: "你正在看送礼攻略",
+      description: "不照抄清单，让 AI 从 TA 的视觉线索里选",
+      clue: "用户从一条送礼攻略视频进入；攻略仅用于理解送礼意图，不默认采用视频中的商品清单",
+    },
+  },
+  {
+    id: "handmade",
+    src: "/videos/feed-handmade.m4v",
+    author: "晚安梵梵",
+    avatar: "梵",
+    description: "一个人送给另一个人最珍贵的礼物，是时间。",
+    tags: ["#手工DIY", "#礼物", "#我们俩"],
+    likes: "12.4万",
+    comments: "3281",
+    shares: "8.9万",
+    prompt: "想把这份灵感送给 TA？",
+    triggerMode: "pause",
+    intent: {
+      source: "product_inspiration",
+      eyebrow: "捕捉到好物灵感",
+      title: "你停下来看了这件手作",
+      description: "把它当线索，继续找更适合 TA 的礼物",
+      clue: "用户在一条双人手作好物视频上主动暂停；该内容只作为礼物灵感，不默认推荐同款",
+    },
   },
   {
     id: "for-him",
@@ -79,8 +102,24 @@ const feedVideos = [
     comments: "6847",
     shares: "15.3万",
     prompt: "别抄清单，直接读懂 TA",
+    triggerMode: "auto",
+    intent: {
+      source: "gift_advice",
+      eyebrow: "识别到送礼意图",
+      title: "你正在看送男友礼物",
+      description: "每个人都不同，从 TA 的真实线索开始",
+      clue: "用户从一条送男友礼物视频进入；视频仅提供关系和场景上下文，不默认采用其中的商品",
+    },
   },
 ] as const;
+
+const manualIntent: IntentContext = {
+  source: "manual",
+  eyebrow: "抖音 AI 入口",
+  title: "为重要的人认真选一次",
+  description: "选择好友或上传一张生活切片",
+  clue: "用户从抖音 AI 选礼入口主动进入",
+};
 
 const demoFriends = [
   {
@@ -315,10 +354,11 @@ function FeedVideoSlide({
 }: {
   video: (typeof feedVideos)[number];
   active: boolean;
-  onOpen: () => void;
+  onOpen: (context: IntentContext) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [paused, setPaused] = useState(false);
+  const [promptRevealed, setPromptRevealed] = useState(false);
 
   useEffect(() => {
     const element = videoRef.current;
@@ -333,10 +373,23 @@ function FeedVideoSlide({
     }
   }, [active, paused]);
 
+  useEffect(() => {
+    if (!active || video.triggerMode !== "auto") return;
+    const timer = window.setTimeout(() => setPromptRevealed(true), 1600);
+    return () => window.clearTimeout(timer);
+  }, [active, video.triggerMode]);
+
+  const promptVisible =
+    active &&
+    (promptRevealed || (video.triggerMode === "pause" && paused));
+
   return (
     <section
       className="video-slide"
-      onClick={() => active && setPaused((value) => !value)}
+      onClick={() => {
+        if (!active) return;
+        setPaused((value) => !value);
+      }}
     >
       <video
         autoPlay={active}
@@ -382,28 +435,34 @@ function FeedVideoSlide({
           ))}
         </div>
       </div>
-      <button
-        className="gift-capsule"
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpen();
-        }}
-        type="button"
-      >
-        <span>
-          <Icon name="spark" size={16} />
-        </span>
-        <div>
-          <strong>{video.prompt}</strong>
-          <small>AI 从 TA 的视觉线索里找答案</small>
-        </div>
-        <b>去试试</b>
-      </button>
+      {promptVisible && (
+        <button
+          className="gift-capsule"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen(video.intent);
+          }}
+          type="button"
+        >
+          <span>
+            <Icon name="spark" size={16} />
+          </span>
+          <div>
+            <small>{video.intent.eyebrow}</small>
+            <strong>{video.prompt}</strong>
+          </div>
+          <b>帮我选</b>
+        </button>
+      )}
     </section>
   );
 }
 
-function VideoFeed({ onOpen }: { onOpen: () => void }) {
+function VideoFeed({
+  onOpen,
+}: {
+  onOpen: (context: IntentContext) => void;
+}) {
   const [activeIndex, setActiveIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -430,12 +489,20 @@ function VideoFeed({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-function DouyinChrome({ onOpen }: { onOpen: () => void }) {
+function DouyinChrome({
+  onOpen,
+}: {
+  onOpen: (context: IntentContext) => void;
+}) {
   return (
     <>
+      <div className="dynamic-island" aria-hidden="true">
+        <span />
+        <i />
+      </div>
       <div className="status-bar">
         <strong>9:41</strong>
-        <span>5G&nbsp;&nbsp;▰▰▰</span>
+        <span>5G&nbsp;&nbsp;◒&nbsp;▰</span>
       </div>
       <div className="feed-top-nav">
         <button type="button">关注</button>
@@ -458,7 +525,7 @@ function DouyinChrome({ onOpen }: { onOpen: () => void }) {
         <button
           aria-label="打开 AI 选礼"
           className="douyin-create"
-          onClick={onOpen}
+          onClick={() => onOpen(manualIntent)}
           type="button"
         >
           <Icon name="gift" size={23} />
@@ -506,6 +573,8 @@ export default function GiftWorkbench() {
   const [loadingIndex, setLoadingIndex] = useState(0);
   const [result, setResult] = useState<RecommendResponse | null>(null);
   const [error, setError] = useState("");
+  const [intentContext, setIntentContext] =
+    useState<IntentContext>(manualIntent);
 
   const selectedFriend =
     demoFriends.find((friend) => friend.id === friendId) || demoFriends[0];
@@ -532,7 +601,8 @@ export default function GiftWorkbench() {
     return () => window.clearInterval(timer);
   }, [stage]);
 
-  function openGiftFinder() {
+  function openGiftFinder(context: IntentContext) {
+    setIntentContext(context);
     setSheetOpen(true);
     if (stage === "result" && !result) setStage("input");
   }
@@ -590,6 +660,7 @@ export default function GiftWorkbench() {
           entryMode === "friend"
             ? `素材来自伴侣 ${selectedFriend.handle} 的模拟公开作品`
             : "素材来自用户主动上传的伴侣生活场景",
+          intentContext.clue,
           clueContext,
         ]
           .filter(Boolean)
@@ -625,11 +696,16 @@ export default function GiftWorkbench() {
 
   return (
     <main className="douyin-demo">
-      <div className="phone-shell">
-        <VideoFeed onOpen={openGiftFinder} />
-        <DouyinChrome onOpen={openGiftFinder} />
+      <div className="iphone-device">
+        <span className="iphone-button iphone-silent" />
+        <span className="iphone-button iphone-volume-up" />
+        <span className="iphone-button iphone-volume-down" />
+        <span className="iphone-button iphone-power" />
+        <div className="phone-shell">
+          <VideoFeed onOpen={openGiftFinder} />
+          <DouyinChrome onOpen={openGiftFinder} />
 
-        {sheetOpen && (
+          {sheetOpen && (
           <>
             <button
               aria-label="关闭 AI 选礼"
@@ -668,6 +744,18 @@ export default function GiftWorkbench() {
 
               {stage === "input" && (
                 <form className="sheet-scroll input-flow" onSubmit={submit}>
+                  <div
+                    className={`intent-context intent-${intentContext.source}`}
+                  >
+                    <span>
+                      <Icon name="spark" size={15} />
+                    </span>
+                    <div>
+                      <small>{intentContext.eyebrow}</small>
+                      <strong>{intentContext.title}</strong>
+                      <p>{intentContext.description}</p>
+                    </div>
+                  </div>
                   <div className="entry-tabs" role="tablist">
                     <button
                       aria-selected={entryMode === "friend"}
@@ -1042,8 +1130,9 @@ export default function GiftWorkbench() {
                 </div>
               )}
             </section>
-          </>
-        )}
+            </>
+          )}
+        </div>
       </div>
     </main>
   );

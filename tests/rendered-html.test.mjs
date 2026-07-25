@@ -32,8 +32,9 @@ test("server-renders the visual gifting product", async () => {
 
   const html = await response.text();
   assert.match(html, /<title>抖音 AI 选礼 · 视觉搜索 Demo<\/title>/i);
-  assert.match(html, /看完还是不知道送什么/);
-  assert.match(html, /AI 从 TA 的视觉线索里找答案/);
+  assert.match(html, /送礼不是越贵越好/);
+  assert.match(html, /iphone-device/);
+  assert.match(html, /dynamic-island/);
   assert.match(html, /抖音底部导航/);
   assert.match(html, /打开 AI 选礼/);
   assert.doesNotMatch(html, /Your site is taking shape/);
