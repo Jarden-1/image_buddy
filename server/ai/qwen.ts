@@ -127,13 +127,25 @@ const GENERIC_INTEREST_TAGS = new Set([
   "探店",
   "数码",
   "实用",
+  "摄影",
 ]);
 
 function normalizeInterestConcept(value: string): string {
   return value
     .replace(/香水|香薰|调香|气味/g, "香氛")
-    .replace(/马拉松|半马/g, "跑步")
+    .replace(/马拉松|半马|路跑/g, "跑步")
     .replace(/拍照|影像/g, "摄影")
+    .replace(/电竞|电子游戏|主机游戏/g, "游戏")
+    .replace(/看书|读书|书籍/g, "阅读")
+    .replace(/画画|插画|速写|水彩画/g, "绘画")
+    .replace(/猫咪|小猫|养猫|狗狗|小狗|养狗/g, "宠物")
+    .replace(/甜品|蛋糕|面包/g, "烘焙")
+    .replace(/绿植|多肉|园艺/g, "植物")
+    .replace(/公路车|山地车|单车/g, "骑行")
+    .replace(/撸铁|力量训练|健身房/g, "健身")
+    .replace(/二次元|动画|漫画/g, "动漫")
+    .replace(/手帐/g, "手账")
+    .replace(/高达|拼装模型/g, "模型")
     .toLowerCase();
 }
 
@@ -173,6 +185,10 @@ const COMPLEMENTARY_TITLE_MARKERS = [
   "相纸",
   "照片书",
   "相框",
+  "工具",
+  "补光",
+  "养护",
+  "纪念",
   "小样",
   "探索",
 ];

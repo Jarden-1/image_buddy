@@ -26,6 +26,9 @@ const genericVideoTags = new Set([
   "数码",
   "实用礼物",
   "礼物",
+  "效率",
+  "收藏",
+  "纪念",
 ]);
 
 function normalizeInterestConcept(value: string): string {
@@ -35,6 +38,17 @@ function normalizeInterestConcept(value: string): string {
     .replace(/拍照|影像/g, "摄影")
     .replace(/电竞|电子游戏|主机游戏/g, "游戏")
     .replace(/桌面布置|电脑桌面/g, "桌搭")
+    .replace(/看书|读书|书籍/g, "阅读")
+    .replace(/画画|插画|速写|水彩画/g, "绘画")
+    .replace(/猫咪|小猫|养猫|狗狗|小狗|养狗/g, "宠物")
+    .replace(/甜品|蛋糕|面包/g, "烘焙")
+    .replace(/绿植|多肉|园艺/g, "植物")
+    .replace(/公路车|山地车|单车/g, "骑行")
+    .replace(/撸铁|力量训练|健身房/g, "健身")
+    .replace(/二次元|动画|漫画/g, "动漫")
+    .replace(/手帐/g, "手账")
+    .replace(/高达|拼装模型/g, "模型")
+    .replace(/vlog|拍视频|视频创作/gi, "短视频")
     .toLowerCase();
 }
 
@@ -79,7 +93,7 @@ export function recallOffers(input: {
     (input.queryTexts || []).join(" "),
   );
 
-  return offers
+  const scored = offers
     .filter((offer) => isEligible(offer, input))
     .map((offer) => {
       const embedding = embeddingMap.get(offer.id) || [];
@@ -100,16 +114,55 @@ export function recallOffers(input: {
         denseScore + Math.min(0.28, specificTagHits * 0.1);
       return { offer, recallScore };
     })
-    .sort((a, b) => b.recallScore - a.recallScore)
-    .slice(0, input.limit || 12);
+    .sort((a, b) => b.recallScore - a.recallScore);
+
+  const limit = input.limit || 12;
+  const remaining = [...scored];
+  const selected: Array<{ offer: Offer; recallScore: number }> = [];
+  const bucketCounts = new Map<string, number>();
+
+  while (selected.length < limit && remaining.length > 0) {
+    let bestIndex = 0;
+    let bestAdjustedScore = Number.NEGATIVE_INFINITY;
+    for (let index = 0; index < remaining.length; index += 1) {
+      const candidate = remaining[index];
+      const primaryTag =
+        candidate.offer.interestTags.find(
+          (tag) => !genericVideoTags.has(tag),
+        ) || "其他";
+      const bucket = `${candidate.offer.kind}:${normalizeInterestConcept(primaryTag)}`;
+      const duplicateCount = bucketCounts.get(bucket) || 0;
+      // Keep the strongest candidate untouched, then apply a small diversity
+      // penalty so one merchant/category cluster cannot occupy all 12 slots.
+      const adjustedScore =
+        candidate.recallScore - Math.min(0.18, duplicateCount * 0.045);
+      if (adjustedScore > bestAdjustedScore) {
+        bestAdjustedScore = adjustedScore;
+        bestIndex = index;
+      }
+    }
+
+    const [picked] = remaining.splice(bestIndex, 1);
+    selected.push(picked);
+    const primaryTag =
+      picked.offer.interestTags.find(
+        (tag) => !genericVideoTags.has(tag),
+      ) || "其他";
+    const bucket = `${picked.offer.kind}:${normalizeInterestConcept(primaryTag)}`;
+    bucketCounts.set(bucket, (bucketCounts.get(bucket) || 0) + 1);
+  }
+
+  return selected;
 }
 
-function normalizedTokens(value: string): string[] {
-  return value
-    .toLowerCase()
-    .split(/[\s、，。；：,.;:|/]+/)
-    .map((token) => token.trim())
-    .filter(Boolean);
+function normalizedConcepts(values: string[]): string[] {
+  return [
+    ...new Set(
+      values
+        .map((value) => normalizeInterestConcept(value.trim()))
+        .filter((value) => value.length >= 2),
+    ),
+  ];
 }
 
 export function matchVideos(input: {
@@ -123,39 +176,66 @@ export function matchVideos(input: {
     .filter((video) => directIds.has(video.id))
     .sort((a, b) => b.qualityScore - a.qualityScore)
     .slice(0, input.limit || 2);
-  // relatedVideoIds are manually curated for the offer. When at least one is
-  // available, do not dilute it with a merely category-adjacent filler video.
-  if (directVideos.length > 0) return directVideos;
+  // relatedVideoIds remain the strongest evidence. If fewer than the requested
+  // amount exist, a high-overlap item of another content role may supplement it.
 
-  const queryTokens = new Set(
-    normalizedTokens(
-      [
-        ...input.selectedGift.videoQueries,
-        ...input.offer.interestTags,
-        ...input.analysis.interests,
-      ].join(" "),
-    ),
-  );
+  const queryConcepts = normalizedConcepts([
+    ...input.selectedGift.videoQueries,
+    ...input.offer.interestTags,
+    ...input.analysis.interests,
+    ...input.analysis.searchQueries,
+  ]);
 
-  return videos
+  const ranked = videos
+    .filter((video) => !directIds.has(video.id))
     .map((video) => {
-      const matchingTags = video.tags.filter((tag) =>
-        [...queryTokens].some(
-          (token) => tag.includes(token) || token.includes(tag),
-        ),
-      );
-      const tagHits = matchingTags.length;
+      const matchingTags = video.tags.filter((tag) => {
+        const normalizedTag = normalizeInterestConcept(tag);
+        return queryConcepts.some(
+          (concept) =>
+            normalizedTag.includes(concept) || concept.includes(normalizedTag),
+        );
+      });
       const specificTagHits = matchingTags.filter(
         (tag) => !genericVideoTags.has(tag),
       ).length;
+      const roleBonus =
+        video.contentRole === "product_proof"
+          ? 0.16
+          : video.contentRole === "gift_advice"
+            ? 0.1
+            : 0.04;
       return {
         video,
-        isRelevant: specificTagHits >= 2,
-        score: tagHits * 0.4 + video.qualityScore * 0.2,
+        isRelevant: specificTagHits >= 1 && matchingTags.length >= 1,
+        score:
+          specificTagHits * 0.62 +
+          matchingTags.length * 0.16 +
+          video.qualityScore * 0.18 +
+          roleBonus,
       };
     })
     .filter((item) => item.isRelevant)
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => b.score - a.score);
+
+  if (directVideos.length > 0) {
+    const needed = Math.max(0, (input.limit || 2) - directVideos.length);
+    if (needed === 0) return directVideos;
+    const directRoles = new Set(
+      directVideos.map((video) => video.contentRole),
+    );
+    const supplements = ranked
+      .sort((a, b) => {
+        const aRoleBonus = directRoles.has(a.video.contentRole) ? 0 : 0.12;
+        const bRoleBonus = directRoles.has(b.video.contentRole) ? 0 : 0.12;
+        return b.score + bRoleBonus - (a.score + aRoleBonus);
+      })
+      .slice(0, needed)
+      .map((item) => item.video);
+    return [...directVideos, ...supplements];
+  }
+
+  return ranked
     .slice(0, input.limit || 2)
     .map((item) => item.video);
 }
