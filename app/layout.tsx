@@ -1,23 +1,30 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "Starter Project",
-  description: "A clean starting point for building your site.",
+  title: "TA 的世界 · 视觉选礼",
+  description:
+    "上传一张 TA 的生活切片，从视觉线索出发，找到 TA 会喜欢、你也不容易买错的礼物。",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/favicon.png",
+    shortcut: "/favicon.png",
+  },
+  openGraph: {
+    title: "TA 的世界 · 视觉选礼",
+    description: "看一眼 TA 的世界，找到真正适合 TA 的礼物。",
+    images: ["/og.jpg"],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TA 的世界 · 视觉选礼",
+    description: "看一眼 TA 的世界，找到真正适合 TA 的礼物。",
+    images: ["/og.jpg"],
   },
 };
 
@@ -27,12 +34,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
-      </body>
+    <html lang="zh-CN">
+      <body className={spaceGrotesk.variable}>{children}</body>
     </html>
   );
 }
