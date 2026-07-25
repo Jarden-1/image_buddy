@@ -1,29 +1,23 @@
 import type { Metadata } from "next";
-import { Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "TA 的世界 · 视觉选礼",
+  title: "抖音 AI 选礼 · 视觉搜索 Demo",
   description:
-    "上传一张 TA 的生活切片，从视觉线索出发，找到 TA 会喜欢、你也不容易买错的礼物。",
+    "在抖音内选择好友或上传生活切片，从视觉线索找到更适合 TA 的礼物。",
   icons: {
     icon: "/favicon.png",
     shortcut: "/favicon.png",
   },
   openGraph: {
-    title: "TA 的世界 · 视觉选礼",
-    description: "看一眼 TA 的世界，找到真正适合 TA 的礼物。",
+    title: "抖音 AI 选礼 · 视觉搜索 Demo",
+    description: "从 TA 的公开作品和生活切片出发，在抖音内完成视觉选礼。",
     images: ["/og.jpg"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TA 的世界 · 视觉选礼",
-    description: "看一眼 TA 的世界，找到真正适合 TA 的礼物。",
+    title: "抖音 AI 选礼 · 视觉搜索 Demo",
+    description: "从 TA 的公开作品和生活切片出发，在抖音内完成视觉选礼。",
     images: ["/og.jpg"],
   },
 };
@@ -35,7 +29,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN">
-      <body className={spaceGrotesk.variable}>{children}</body>
+      <body>{children}</body>
     </html>
   );
 }

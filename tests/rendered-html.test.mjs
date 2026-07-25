@@ -31,11 +31,11 @@ test("server-renders the visual gifting product", async () => {
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);
 
   const html = await response.text();
-  assert.match(html, /<title>TA 的世界 · 视觉选礼<\/title>/i);
-  assert.match(html, /不用猜 TA 想要什么/);
-  assert.match(html, /给我一点关于 TA 的线索/);
-  assert.match(html, /开始读懂 TA/);
-  assert.match(html, /@ 选择好友/);
+  assert.match(html, /<title>抖音 AI 选礼 · 视觉搜索 Demo<\/title>/i);
+  assert.match(html, /看完还是不知道送什么/);
+  assert.match(html, /AI 从 TA 的视觉线索里找答案/);
+  assert.match(html, /抖音底部导航/);
+  assert.match(html, /打开 AI 选礼/);
   assert.doesNotMatch(html, /Your site is taking shape/);
   assert.doesNotMatch(html, /codex-preview/);
 });
@@ -51,7 +51,7 @@ test("keeps the workbench connected to the real recommendation API", async () =>
   assert.match(workbench, /fetch\("\/api\/recommend"/);
   assert.match(workbench, /form\.append\("image"/);
   assert.match(workbench, /result\.analysis\.evidence/);
-  assert.match(workbench, /gift\.offer\.sourceUrl/);
+  assert.match(workbench, /offerAction\(gift\.offer\)/);
   assert.match(workbench, /gift\.videos/);
   assert.match(page, /<GiftWorkbench \/>/);
   assert.match(layout, /lang="zh-CN"/);
