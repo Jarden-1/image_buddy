@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { open, readFile, stat } from "node:fs/promises";
 import test from "node:test";
 
 const [offers, videos, embeddings] = await Promise.all([
@@ -118,5 +118,64 @@ test("video metadata is safe to rank and open", () => {
         video.qualityScore <= 1,
       `${video.id} 的质量分不合法`,
     );
+  }
+});
+
+const bundledVideos = [
+  "../public/videos/feed-gift-for-him.m4v",
+  "../public/videos/feed-gift-guide.m4v",
+  "../public/videos/feed-handmade.m4v",
+];
+const bundledImages = [
+  "../public/demo-friend-fragrance.jpg",
+  "../public/demo-friend-gaming.jpg",
+  "../public/demo-friend-photo.jpg",
+  "../public/demo-ta.jpg",
+  ...Array.from(
+    { length: 7 },
+    (_, index) =>
+      `./fixtures/visual-eval/${String(index + 1).padStart(2, "0")}-${[
+        "photography-desk",
+        "gaming-desk",
+        "running-entryway",
+        "fragrance-bedroom",
+        "reading-bedroom",
+        "pet-entryway",
+        "baking-kitchen",
+      ][index]}.jpg`,
+  ),
+];
+
+async function readHeader(path, length) {
+  const handle = await open(new URL(path, import.meta.url));
+  try {
+    const buffer = Buffer.alloc(length);
+    await handle.read(buffer, 0, length, 0);
+    return buffer;
+  } finally {
+    await handle.close();
+  }
+}
+
+test("handoff media is bundled and stays within GitHub limits", async () => {
+  for (const path of bundledVideos) {
+    const fileUrl = new URL(path, import.meta.url);
+    const fileStat = await stat(fileUrl);
+    assert.ok(fileStat.size > 100_000, `${path} 不是有效视频素材`);
+    assert.ok(
+      fileStat.size < 25 * 1024 * 1024,
+      `${path} 对普通 Git 交接过大`,
+    );
+    const header = await readHeader(path, 12);
+    assert.equal(header.toString("ascii", 4, 8), "ftyp", `${path} 不是 MP4/M4V`);
+  }
+
+  for (const path of bundledImages) {
+    const fileUrl = new URL(path, import.meta.url);
+    const fileStat = await stat(fileUrl);
+    assert.ok(fileStat.size > 10_000, `${path} 不是有效图片素材`);
+    assert.ok(fileStat.size < 2 * 1024 * 1024, `${path} 图片体积异常`);
+    const header = await readHeader(path, 2);
+    assert.deepEqual([...header], [0xff, 0xd8], `${path} 不是 JPEG`);
   }
 });

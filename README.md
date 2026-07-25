@@ -46,10 +46,14 @@
 要求 Node.js `>=22.13.0`。
 
 ```bash
-npm install
+git clone https://github.com/Jarden-1/image_buddy.git
+cd image_buddy
+npm ci
 cp .env.example .env.local
 npm run dev
 ```
+
+仓库已经包含页面所需的 3 段压缩视频、4 张 Demo 图片、7 张视觉回归图片、商品与内容目录以及离线商品向量，不需要再单独传素材 ZIP。三段 `.m4v` 视频总计约 22 MB，单文件均低于 GitHub 100 MB 限制。
 
 在 `.env.local` 中配置：
 
@@ -64,6 +68,8 @@ DEFAULT_CITY=重庆
 
 API Key 只放在 `.env.local`，禁止提交到 Git。
 
+没有配置 API Key 时，抖音式页面、视频流和前端交互仍可打开，但提交真实视觉分析会返回配置缺失；接力开发者需要使用自己的百炼 Key，或通过安全渠道取得团队测试 Key。
+
 ## 验证
 
 ```bash
@@ -73,7 +79,7 @@ npm run eval:visual
 ```
 
 - `npm test` 会构建项目并验证商品、视频、向量和页面契约。
-- `npm run eval:visual` 会调用本地真实 AI 链路，回归阅读、宠物和烘焙场景。
+- `npm run eval:visual` 会调用本地真实 AI 链路，回归摄影、游戏、跑步、香氛、阅读、宠物和烘焙七个场景。
 - 七组视觉案例与结果记录位于 `tests/fixtures/visual-eval/README.md`。
 
 新增或修改商品的 `searchText` 后，使用以下命令重新生成向量：
