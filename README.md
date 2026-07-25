@@ -1,58 +1,100 @@
-# 抖音送礼指南
+# 抖音 AI 视觉选礼 Demo
 
-模拟抖音 App 的沉浸暗黑风前端 —— 手机模拟器外框 + 竖屏视频流 + AI 礼物推荐半屏。
+这是一个面向年轻用户的视觉搜索黑客松项目：用户在抖音刷到送礼攻略，或停下来细看一件好物时，进入「AI 选礼」；选择抖音好友的模拟公开作品，或上传 TA 的生活切片，系统从视觉证据出发推荐可履约礼物与相关抖音内容。
 
-## 技术栈
+当前版本只正式服务恋爱伴侣。好友、同事、家人等关系会复用相同技术链路，但必须接入各自的送礼 Skill 后才能开放，避免把伴侣规则生搬硬套。
 
-Vite 7 + React 19 + TypeScript + Tailwind CSS v4 + lucide-react + wouter
+## 当前体验
 
-## 快速开始
+1. 在抖音式短视频流浏览内容。
+2. 送礼攻略停留约 1.6 秒后出现轻提示；普通好物在用户主动暂停后出现。
+3. 通过 `@选择好友` Demo 或上传桌面、卧室、穿搭、公开作品截图提供视觉线索。
+4. 补充场合、预算、城市和一句可选说明。
+5. 系统完成视觉理解、向量召回、轻量 LLM 选择、视频匹配和结果生成。
+6. 结果以「可履约礼物/本地体验 + 视觉证据 + 风险提醒 + 关联内容」呈现在抖音内。
+
+场合已覆盖生日、纪念日、七夕、日常惊喜、毕业、搬家与久别重逢。
+
+## 推荐链路
+
+```text
+图片 + 场合/预算/城市
+  → Qwen VLM 提取客观证据、兴趣、审美、已有物和检索句
+  → text-embedding-v4 生成查询向量
+  → 预算/城市过滤 + 稠密向量召回 + 明确兴趣加权 + 候选多样化
+  → Qwen Flash 从 12 个真实候选中选择最多 3 个不同策略
+  → 服务端校验已有物重复、共同体验证据和策略合法性
+  → 人工关联优先的抖音内容匹配
+  → 推荐工作台
+```
+
+整条链路只有两次生成调用：一次 VLM、一次轻量文本模型。Embedding 是检索调用；预算过滤、去重、候选多样化、格式修复和视频匹配均在本地完成。
+
+## 数据覆盖
+
+- 66 个商品与重庆本地体验。
+- 73 条抖音关联内容。
+- 覆盖摄影、游戏、桌搭、香氛、跑步、阅读、绘画、宠物、烘焙、植物、骑行、健身、动漫、旅行、文具等视觉上容易识别的兴趣。
+- 商品来源区分官方商品、零售搜索、抖音视频和本地生活 Demo。
+- 价格区分已核实、页面快照和 Demo 估价，并保留核验时间与风险说明。
+- 所有商品均有 1024 维 `text-embedding-v4` 向量。
+
+`data/offers.json` 是商品与体验目录，`data/videos.json` 是内容目录，`data/offer-embeddings.json` 是离线商品向量。
+
+## 本地运行
+
+要求 Node.js `>=22.13.0`。
 
 ```bash
-npm install
-npm run dev      # 开发服务器 http://localhost:3000
-npm run build    # 生产构建
-npm run preview  # 预览构建产物
+git clone https://github.com/Jarden-1/image_buddy.git
+cd image_buddy
+npm ci
+cp .env.example .env.local
+npm run dev
 ```
 
-## 视频文件
+仓库已经包含页面所需的 3 段压缩视频、4 张 Demo 图片、7 张视觉回归图片、商品与内容目录以及离线商品向量，不需要再单独传素材 ZIP。三段 `.m4v` 视频总计约 22 MB，单文件均低于 GitHub 100 MB 限制。
 
-视频流使用真实 mp4，由于体积较大（最大 147M，共约 280M，超过 GitHub 单文件 100M 限制）未纳入仓库。
+在 `.env.local` 中配置：
 
-本地运行前，把以下 3 个 mp4 放到 `public/videos/`：
-
-| 文件名 | 对应视频项 | 主题 |
-|---|---|---|
-| `v1-handmade.mp4` | v1 立体蛋糕贺卡 | 手作 / 立体书 |
-| `v2-gift-guide.mp4` | v2 时间礼物盒 | 送礼物技巧 |
-| `v3-gift-for-him.mp4` | v3 香水测评 | 送男生礼物 |
-
-不放视频也能跑，只是视频流区域会是空的（poster 封面图仍会显示）。
-
-## 项目结构
-
-```
-src/
-├── components/
-│   ├── VideoFeed.tsx        # 视频流（scroll-snap + 点击暂停浮现胶囊）
-│   ├── GiftFinderSheet.tsx  # AI 礼物推荐半屏（4 状态）
-│   ├── DouyinNav.tsx        # 底部 5 tab 导航
-│   ├── StatusBar.tsx        # 手机状态栏
-│   ├── CapsuleOverlay.tsx   # 暂停后胶囊浮层
-│   └── ErrorBoundary.tsx
-├── pages/
-│   ├── Home.tsx
-│   └── NotFound.tsx
-├── lib/
-│   ├── mockData.ts          # 博主/视频/商品/问题数据
-│   └── utils.ts
-├── App.tsx
-├── main.tsx
-└── index.css                # 抖音暗黑主题 + 动画
+```env
+DASHSCOPE_API_KEY=
+BAILIAN_BASE_URL=https://YOUR_WORKSPACE_ID.cn-beijing.maas.aliyuncs.com/compatible-mode/v1
+QWEN_VISION_MODEL=qwen3-vl-flash
+QWEN_TEXT_MODEL=qwen3.5-flash
+QWEN_EMBEDDING_MODEL=text-embedding-v4
+DEFAULT_CITY=重庆
 ```
 
-## 设计
+API Key 只放在 `.env.local`，禁止提交到 Git。
 
-- 背景 `#000`，珊瑚红 `#FE2C55`，青蓝 `#25F4EE`
-- 手机模拟器外框 390×844，移动端全屏
-- 半屏抽屉 4 状态：上传 → 问题卡 → 博主碎碎念 → 署名报告
+没有配置 API Key 时，抖音式页面、视频流和前端交互仍可打开，但提交真实视觉分析会返回配置缺失；接力开发者需要使用自己的百炼 Key，或通过安全渠道取得团队测试 Key。
+
+## 验证
+
+```bash
+npm run lint
+npm test
+npm run eval:visual
+```
+
+- `npm test` 会构建项目并验证商品、视频、向量和页面契约。
+- `npm run eval:visual` 会调用本地真实 AI 链路，回归摄影、游戏、跑步、香氛、阅读、宠物和烘焙七个场景。
+- 七组视觉案例与结果记录位于 `tests/fixtures/visual-eval/README.md`。
+
+新增或修改商品的 `searchText` 后，使用以下命令重新生成向量：
+
+```bash
+node --env-file=.env.local scripts/generate-offer-embeddings.mjs
+```
+
+## Skill 接入
+
+`skill/visual-gift-search/` 是伴侣视觉选礼 Skill，代码通过 `server/ai/skill-context.ts` 将 Skill 正文和必要 references 注入视觉理解与候选选择阶段。
+
+后续增加关系类型时，建议为每种关系新增独立 Skill，并在服务端做关系到 Skill 的显式路由。商品召回、预算过滤和视频匹配保持共享，不复制一套算法。
+
+## Git 回退点
+
+- `baseline-iphone-gifting-v1`：iPhone 外观、抖音内入口和基础真实 AI 链路。
+- 后续数据扩容、排序优化和场景回归均拆为独立提交，可以逐个回退。

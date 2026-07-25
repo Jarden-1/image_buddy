@@ -1,9 +1,43 @@
-node_modules
-dist
-.DS_Store
-*.local
-.vite
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# 大视频文件不进仓库（GitHub 单文件限 100M）
-# 本地把 mp4 放到 public/videos/ 即可，文件名见 README
-public/videos/*.mp4
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/.vinext/
+/out/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+!.env.example
+
+# vercel
+.vercel
+
+# typescript
+next-env.d.ts
+/dist/
+/.wrangler/
+/outputs/
+/work/
