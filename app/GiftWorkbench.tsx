@@ -169,18 +169,45 @@ const giftCompanions = [
     emoji: "💼",
     name: "大厂 Mentor",
     description: "职场送礼的分寸和质感",
+    intro:
+      "来自互联网大厂的送礼经验，擅长把那些不说破的人情分寸，变成恰到好处的礼物建议。不会只看价格，更会先判断关系距离、使用场景和对方的表达偏好。",
+    strengths: ["入职与晋升", "重要合作", "低调有质感"],
+    approach: [
+      "先判断礼物该传递感谢、祝贺还是建立信任",
+      "优先选高频能用、但不显得过度私人化的好物",
+      "避开品牌露出太强或价值感难拿捏的选择",
+    ],
+    mockVideos: ["不贵但很有分量的升职礼物", "送同事不踩雷的桌面好物"],
   },
   {
     id: "girlfriend",
     emoji: "🎀",
     name: "女友好物搭子",
     description: "小众、好看又有心意",
+    intro:
+      "长期关注小众生活方式内容，知道礼物的心意常常藏在颜色、质感和使用瞬间里。会帮你避开“看起来很贵但她不会用”的东西，找到真正贴近她日常的小惊喜。",
+    strengths: ["纪念日心意", "氛围感好物", "不撞款礼物"],
+    approach: [
+      "从她的穿搭、房间和收藏里找审美线索",
+      "用细节感和专属感替代过度隆重的仪式感",
+      "优先推荐有故事、能融入日常的礼物",
+    ],
+    mockVideos: ["把日常变成礼物的 3 个小众好物", "女友会反复用的精致礼物"],
   },
   {
     id: "jiahao",
     emoji: "✨",
     name: "嘉豪好物雷达",
     description: "跟着嘉豪发现有趣好物",
+    intro:
+      "从嘉豪式的真实体验内容里提炼出“有趣但不鸡肋”的选礼方法。它特别会识别让人忍不住上手、分享或立刻用起来的产品，把预算花在真正能带来惊喜的细节上。",
+    strengths: ["新奇有趣", "实用主义", "日常惊喜"],
+    approach: [
+      "先看产品是否能马上带来一个好玩的使用瞬间",
+      "在新奇和实用之间保留恰好的平衡",
+      "优先推荐容易讲出“为什么想到送这个”的好物",
+    ],
+    mockVideos: ["最近让人眼前一亮的实用好物", "预算不高也能送出惊喜"],
   },
 ] as const;
 
@@ -594,6 +621,9 @@ export default function GiftWorkbench() {
   const [budgetIndex, setBudgetIndex] = useState(1);
   const [friendHandle, setFriendHandle] = useState("");
   const [companionId, setCompanionId] = useState("mentor");
+  const [detailCompanionId, setDetailCompanionId] = useState<string | null>(
+    null,
+  );
   const [customOccasion, setCustomOccasion] = useState("");
   const [customBudget, setCustomBudget] = useState("");
   const [relationship, setRelationship] =
@@ -612,6 +642,9 @@ export default function GiftWorkbench() {
     [file],
   );
   const activePreview = uploadPreview || selectedFriend.image;
+  const detailCompanion = giftCompanions.find(
+    (companion) => companion.id === detailCompanionId,
+  );
 
   useEffect(
     () => () => {
@@ -790,6 +823,7 @@ export default function GiftWorkbench() {
               </header>
 
               {stage === "input" && (
+                <>
                 <form className="sheet-scroll input-flow" onSubmit={submit}>
                   <div className="recipient-field">
                     <span>送给谁？</span>
@@ -854,7 +888,7 @@ export default function GiftWorkbench() {
                             companionId === companion.id ? "selected" : ""
                           }
                           key={companion.id}
-                          onClick={() => setCompanionId(companion.id)}
+                          onClick={() => setDetailCompanionId(companion.id)}
                           type="button"
                         >
                           <span aria-hidden="true">{companion.emoji}</span>
@@ -1011,6 +1045,76 @@ export default function GiftWorkbench() {
                     开始推荐好物视频
                   </button>
                 </form>
+                {detailCompanion && (
+                  <section
+                    aria-label={`${detailCompanion.name}介绍`}
+                    className="companion-detail"
+                  >
+                    <header>
+                      <button
+                        aria-label="返回送礼搭子列表"
+                        onClick={() => setDetailCompanionId(null)}
+                        type="button"
+                      >
+                        <Icon name="back" size={20} />
+                      </button>
+                      <strong>搭子介绍</strong>
+                    </header>
+                    <div className="companion-detail-hero">
+                      <span aria-hidden="true">{detailCompanion.emoji}</span>
+                      <div>
+                        <small>送礼搭子</small>
+                        <h2>{detailCompanion.name}</h2>
+                        <p>{detailCompanion.description}</p>
+                      </div>
+                    </div>
+                    <p className="companion-detail-intro">
+                      {detailCompanion.intro}
+                    </p>
+                    <section className="companion-detail-section">
+                      <h3>TA 擅长帮你解决</h3>
+                      <div>
+                        {detailCompanion.strengths.map((strength) => (
+                          <span key={strength}>{strength}</span>
+                        ))}
+                      </div>
+                    </section>
+                    <section className="companion-detail-section">
+                      <h3>TA 会怎么帮你选</h3>
+                      <ol className="companion-approach">
+                        {detailCompanion.approach.map((step, index) => (
+                          <li key={step}>
+                            <i>{index + 1}</i>
+                            <span>{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                    <section className="companion-detail-section">
+                      <h3>TA 最近在看</h3>
+                      <div className="mock-video-list">
+                        {detailCompanion.mockVideos.map((video, index) => (
+                          <article key={video}>
+                            <i>{index + 1}</i>
+                            <span>{video}</span>
+                            <Icon name="play" size={14} />
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                    <button
+                      className="choose-companion"
+                      onClick={() => {
+                        setCompanionId(detailCompanion.id);
+                        setDetailCompanionId(null);
+                      }}
+                      type="button"
+                    >
+                      选择 TA 帮我选
+                    </button>
+                  </section>
+                )}
+                </>
               )}
 
               {stage === "loading" && (
