@@ -40,24 +40,41 @@ async function postJson<T>(
   body: Record<string, unknown>,
 ): Promise<T> {
   const config = getConfig();
-  const response = await fetch(`${config.baseUrl}${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  let lastError = "AI_REQUEST_FAILED";
 
-  const result = (await response.json()) as T & {
-    error?: { message?: string; code?: string };
-  };
-  if (!response.ok) {
-    throw new Error(
-      result.error?.message || result.error?.code || `AI_HTTP_${response.status}`,
-    );
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(`${config.baseUrl}${path}`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${config.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const raw = await response.text();
+    let result: (T & { error?: { message?: string; code?: string } }) | null =
+      null;
+
+    try {
+      result = JSON.parse(raw) as T & {
+        error?: { message?: string; code?: string };
+      };
+    } catch {
+      // 网关偶尔会返回非 JSON 错误页，保留状态码而不是二次抛出 JSON 解析错误。
+    }
+
+    if (response.ok && result) return result;
+
+    lastError =
+      result?.error?.message ||
+      result?.error?.code ||
+      (raw ? raw.slice(0, 180) : `AI_HTTP_${response.status}`);
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt === 2) break;
+    await new Promise((resolve) => setTimeout(resolve, 400 * (attempt + 1)));
   }
-  return result;
+
+  throw new Error(lastError);
 }
 
 function parseModelJson<T>(raw: string): T {
@@ -237,8 +254,8 @@ function duplicatesOwnedItem(offer: Offer, analysis: VisualAnalysis): boolean {
     });
 }
 
-export async function analyzeGiftImage(input: {
-  imageDataUrl: string;
+export async function analyzeGiftImages(input: {
+  imageDataUrls: string[];
   occasion: string;
   budgetMin: number;
   budgetMax: number;
@@ -279,10 +296,6 @@ export async function analyzeGiftImage(input: {
         role: "user",
         content: [
           {
-            type: "image_url",
-            image_url: { url: input.imageDataUrl },
-          },
-          {
             type: "text",
             text: [
               `关系：伴侣`,
@@ -292,12 +305,17 @@ export async function analyzeGiftImage(input: {
               input.clueContext
                 ? `用户补充：${input.clueContext}`
                 : "用户没有补充说明",
+              "多张图片属于同一位送礼对象，请合并观察，不要把不同图片当成不同的人。",
               "保持极简：证据不超过3条，兴趣不超过4个，审美不超过3个，物品不超过6个，避坑不超过4条，每个字符串不超过24个汉字。",
               "ownedOrShown 优先完整盘点画面中可见的装备、配件和收纳物，以避免后续重复推荐；仅在确有依据时标为 owned。",
               "请只输出一个 JSON 对象，不要输出 Markdown。",
               `字段结构示例：${JSON.stringify(schemaExample)}`,
             ].join("\n"),
           },
+          ...input.imageDataUrls.map((url) => ({
+            type: "image_url" as const,
+            image_url: { url },
+          })),
         ],
       },
     ],

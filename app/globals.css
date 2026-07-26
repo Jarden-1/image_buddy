@@ -1116,22 +1116,25 @@ a {
   font-size: 10px;
 }
 
-.upload-section > button.has-preview img {
-  position: absolute;
-  inset: 0;
+.upload-preview-grid {
+  display: grid;
   width: 100%;
   height: 100%;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  padding: 3px;
+  background: #080808;
+}
+
+.upload-preview-grid img {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border-radius: 8px;
   object-fit: cover;
 }
 
-.upload-section > button.has-preview::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgb(0 0 0 / 0.7), transparent);
-  content: "";
-}
-
-.upload-section > button.has-preview span {
+.upload-section > button.has-preview > span {
   position: absolute;
   z-index: 2;
   right: 10px;

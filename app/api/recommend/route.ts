@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { NextResponse } from "next/server";
 import {
-  analyzeGiftImage,
+  analyzeGiftImages,
   embedTexts,
   selectGiftCandidates,
 } from "@/server/ai/qwen";
@@ -13,7 +13,8 @@ import {
 
 export const runtime = "nodejs";
 
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGES = 6;
+const MAX_TOTAL_IMAGE_BYTES = 10 * 1024 * 1024;
 
 function numberFromForm(
   value: FormDataEntryValue | null,
@@ -27,22 +28,34 @@ async function parseRequest(request: Request) {
   const contentType = request.headers.get("content-type") || "";
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
-    const image = form.get("image");
-    if (!(image instanceof File)) {
+    const images = form
+      .getAll("images")
+      .concat(form.get("image"))
+      .filter((value): value is File => value instanceof File);
+    if (images.length === 0) {
       throw new Error("IMAGE_REQUIRED");
     }
-    if (!image.type.startsWith("image/")) {
+    if (images.length > MAX_IMAGES) {
+      throw new Error("IMAGE_COUNT_EXCEEDED");
+    }
+    if (images.some((image) => !image.type.startsWith("image/"))) {
       throw new Error("IMAGE_TYPE_INVALID");
     }
-    if (image.size > MAX_IMAGE_BYTES) {
+    if (
+      images.reduce((total, image) => total + image.size, 0) >
+      MAX_TOTAL_IMAGE_BYTES
+    ) {
       throw new Error("IMAGE_TOO_LARGE");
     }
-    const imageDataUrl = `data:${image.type};base64,${Buffer.from(
-      await image.arrayBuffer(),
-    ).toString("base64")}`;
+    const imageDataUrls = await Promise.all(
+      images.map(async (image) => {
+        const bytes = await image.arrayBuffer();
+        return `data:${image.type};base64,${Buffer.from(bytes).toString("base64")}`;
+      }),
+    );
 
     return {
-      imageDataUrl,
+      imageDataUrls,
       occasion: String(form.get("occasion") || "纪念日"),
       budgetMin: numberFromForm(form.get("budgetMin"), 100),
       budgetMax: numberFromForm(form.get("budgetMax"), 800),
@@ -52,6 +65,7 @@ async function parseRequest(request: Request) {
   }
 
   const body = (await request.json()) as {
+    imageDataUrls?: string[];
     imageDataUrl?: string;
     occasion?: string;
     budgetMin?: number;
@@ -59,11 +73,16 @@ async function parseRequest(request: Request) {
     city?: string;
     clueContext?: string;
   };
-  if (!body.imageDataUrl?.startsWith("data:image/")) {
+  const imageDataUrls = body.imageDataUrls || [body.imageDataUrl || ""];
+  if (
+    imageDataUrls.length === 0 ||
+    imageDataUrls.length > MAX_IMAGES ||
+    imageDataUrls.some((image) => !image.startsWith("data:image/"))
+  ) {
     throw new Error("IMAGE_REQUIRED");
   }
   return {
-    imageDataUrl: body.imageDataUrl,
+    imageDataUrls,
     occasion: body.occasion || "纪念日",
     budgetMin: Number(body.budgetMin ?? 100),
     budgetMax: Number(body.budgetMax ?? 800),
@@ -89,7 +108,7 @@ export async function POST(request: Request) {
     }
 
     const visualStartedAt = performance.now();
-    const analysis = await analyzeGiftImage(input);
+    const analysis = await analyzeGiftImages(input);
     const visualMs = Math.round(performance.now() - visualStartedAt);
 
     const recallStartedAt = performance.now();
@@ -171,6 +190,7 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "UNKNOWN_ERROR";
     const clientErrors = new Set([
       "IMAGE_REQUIRED",
+      "IMAGE_COUNT_EXCEEDED",
       "IMAGE_TYPE_INVALID",
       "IMAGE_TOO_LARGE",
     ]);

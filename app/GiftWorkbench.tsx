@@ -610,11 +610,38 @@ function parseCustomBudget(value: string) {
   return first < second ? { min: first, max: second } : { min: second, max: first };
 }
 
+async function compressImage(file: File): Promise<File> {
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("图片读取失败"));
+      element.src = sourceUrl;
+    });
+    const maxEdge = 1600;
+    const scale = Math.min(1, maxEdge / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, "image/jpeg", 0.78),
+    );
+    if (!blob) throw new Error("图片压缩失败");
+    return new File([blob], file.name.replace(/\.[^.]+$/, ".jpg"), {
+      type: "image/jpeg",
+    });
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 export default function GiftWorkbench() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [stage, setStage] = useState<SheetStage>("input");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [occasion, setOccasion] = useState<(typeof occasions)[number] | "自定义">(
     "生日",
   );
@@ -637,20 +664,20 @@ export default function GiftWorkbench() {
     useState<IntentContext>(manualIntent);
 
   const selectedFriend = demoFriends[0];
-  const uploadPreview = useMemo(
-    () => (file ? URL.createObjectURL(file) : ""),
-    [file],
+  const uploadPreviews = useMemo(
+    () => files.map((file) => URL.createObjectURL(file)),
+    [files],
   );
-  const activePreview = uploadPreview || selectedFriend.image;
+  const activePreview = uploadPreviews[0] || selectedFriend.image;
   const detailCompanion = giftCompanions.find(
     (companion) => companion.id === detailCompanionId,
   );
 
   useEffect(
     () => () => {
-      if (uploadPreview) URL.revokeObjectURL(uploadPreview);
+      uploadPreviews.forEach((preview) => URL.revokeObjectURL(preview));
     },
-    [uploadPreview],
+    [uploadPreviews],
   );
 
   useEffect(() => {
@@ -668,34 +695,31 @@ export default function GiftWorkbench() {
     if (stage === "result" && !result) setStage("input");
   }
 
-  function acceptFile(nextFile?: File) {
-    if (!nextFile) return;
-    if (!nextFile.type.startsWith("image/")) {
-      setError("当前 Demo 先支持 JPG、PNG、WebP 图片");
+  async function acceptFiles(nextFiles: File[]) {
+    if (nextFiles.length === 0) return;
+    if (nextFiles.length > 6) {
+      setError("一次最多导入 6 张图片");
       return;
     }
-    if (nextFile.size > 5 * 1024 * 1024) {
-      setError("图片请控制在 5MB 以内");
+    if (nextFiles.some((file) => !file.type.startsWith("image/"))) {
+      setError("请只导入 JPG、PNG 或 WebP 图片");
       return;
     }
-    setFile(nextFile);
+    try {
+      const compressed = await Promise.all(nextFiles.map(compressImage));
+      setFiles(compressed);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "图片处理失败");
+      return;
+    }
     setResult(null);
     setError("");
   }
 
-  async function friendImageAsFile() {
-    const response = await fetch(selectedFriend.image);
-    if (!response.ok) throw new Error("示例好友素材读取失败");
-    const blob = await response.blob();
-    return new File([blob], `${selectedFriend.name}-公开作品.jpg`, {
-      type: blob.type || "image/jpeg",
-    });
-  }
-
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (!file) {
-      setError("先上传一张 TA 的桌面、房间、穿搭或公开作品截图");
+    if (files.length === 0) {
+      setError("先导入 TA 的桌面、房间、穿搭或公开作品截图");
       return;
     }
 
@@ -714,10 +738,9 @@ export default function GiftWorkbench() {
     setStage("loading");
 
     try {
-      const analysisFile = file || (await friendImageAsFile());
-      if (!analysisFile) throw new Error("没有可分析的视觉线索");
       const form = new FormData();
-      form.append("image", analysisFile);
+      form.append("image", files[0]);
+      files.slice(1).forEach((file) => form.append("images", file));
       form.append(
         "occasion",
         occasion === "自定义" ? customOccasion || "自定义场合" : occasion,
@@ -751,7 +774,15 @@ export default function GiftWorkbench() {
         method: "POST",
         body: form,
       });
-      const payload = (await response.json()) as RecommendResponse;
+      const contentType = response.headers.get("content-type") || "";
+      const payload = contentType.includes("application/json")
+        ? ((await response.json()) as RecommendResponse)
+        : {
+            error:
+              response.status === 413
+                ? "图片总量过大，请减少图片数量或换更小的图片"
+                : "推荐服务暂时不可用，请稍后重试",
+          };
       if (!response.ok || payload.error) {
         throw new Error(payload.error || "推荐生成失败");
       }
@@ -769,7 +800,7 @@ export default function GiftWorkbench() {
 
   function reset() {
     setResult(null);
-    setFile(null);
+    setFiles([]);
     setError("");
     setStage("input");
   }
@@ -844,33 +875,42 @@ export default function GiftWorkbench() {
                       accept="image/jpeg,image/png,image/webp"
                       hidden
                       onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                        acceptFile(event.target.files?.[0])
+                        void acceptFiles(Array.from(event.target.files || []))
                       }
                       ref={fileInputRef}
+                      multiple
                       type="file"
                     />
                     <button
-                      className={uploadPreview ? "has-preview" : ""}
+                      className={uploadPreviews.length ? "has-preview" : ""}
                       onClick={() => fileInputRef.current?.click()}
                       type="button"
                     >
-                      {uploadPreview ? (
+                      {uploadPreviews.length ? (
                         <>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img alt="准备分析的视觉线索" src={uploadPreview} />
-                          <span>换一张</span>
+                          <div className="upload-preview-grid">
+                            {uploadPreviews.map((preview, index) => (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                alt={`准备分析的视觉线索 ${index + 1}`}
+                                key={preview}
+                                src={preview}
+                              />
+                            ))}
+                          </div>
+                          <span>{uploadPreviews.length} 张图片，点击重选</span>
                         </>
                       ) : (
                         <>
                           <i>
                             <Icon name="camera" size={22} />
                           </i>
-                          <strong>拍一张，或从相册选择</strong>
-                          <small>桌面 / 房间 / 穿搭 / 公开作品截图</small>
+                          <strong>拍一张，或从相册批量选择</strong>
+                          <small>最多 6 张，桌面 / 房间 / 穿搭 / 公开作品截图</small>
                         </>
                       )}
                     </button>
-                    <p>图片只用于本次分析，不建立长期画像</p>
+                    <p>图片会在本地压缩后仅用于本次分析，不建立长期画像</p>
                   </div>
 
                   {/* 博主选择（常驻）*/}
@@ -1125,9 +1165,9 @@ export default function GiftWorkbench() {
                     <div />
                     <span />
                     <small>
-                      {uploadPreview
-                        ? "用户上传 · 生活切片"
-                        : `${selectedFriend.handle} · 公开作品`}
+                      {files.length > 1
+                        ? `用户上传 · ${files.length} 张生活切片`
+                        : "用户上传 · 生活切片"}
                     </small>
                   </div>
                   <div className="loading-title">
