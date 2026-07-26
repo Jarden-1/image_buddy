@@ -41,7 +41,6 @@ type RecommendResponse = {
 };
 
 type SheetStage = "input" | "loading" | "result";
-type EntryMode = "friend" | "upload";
 type IntentContext = {
   source: "gift_advice" | "product_inspiration" | "manual";
   eyebrow: string;
@@ -157,13 +156,32 @@ const occasions = [
   "七夕",
   "日常惊喜",
   "毕业",
-  "搬家",
-  "久别重逢",
 ] as const;
 const budgetOptions = [
   { label: "¥0–300", min: 0, max: 300 },
   { label: "¥100–800", min: 100, max: 800 },
   { label: "¥500–1500", min: 500, max: 1500 },
+] as const;
+const relationships = ["情侣", "朋友", "家人", "同事", "同学"] as const;
+const giftCompanions = [
+  {
+    id: "mentor",
+    emoji: "💼",
+    name: "大厂 Mentor",
+    description: "职场送礼的分寸和质感",
+  },
+  {
+    id: "girlfriend",
+    emoji: "🎀",
+    name: "女友好物搭子",
+    description: "小众、好看又有心意",
+  },
+  {
+    id: "jiahao",
+    emoji: "✨",
+    name: "嘉豪好物雷达",
+    description: "跟着嘉豪发现有趣好物",
+  },
 ] as const;
 
 const loadingStages = [
@@ -366,7 +384,6 @@ function FeedVideoSlide({
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [paused, setPaused] = useState(false);
-  const [promptRevealed, setPromptRevealed] = useState(false);
 
   useEffect(() => {
     const element = videoRef.current;
@@ -381,15 +398,8 @@ function FeedVideoSlide({
     }
   }, [active, paused]);
 
-  useEffect(() => {
-    if (!active || video.triggerMode !== "auto") return;
-    const timer = window.setTimeout(() => setPromptRevealed(true), 1600);
-    return () => window.clearTimeout(timer);
-  }, [active, video.triggerMode]);
-
-  const promptVisible =
-    active &&
-    (promptRevealed || (video.triggerMode === "pause" && paused));
+  // 统一：仅暂停时显示气泡，播放/恢复时立即消失
+  const promptVisible = active && paused;
 
   return (
     <section
@@ -564,19 +574,31 @@ function offerAction(offer: Offer) {
   };
 }
 
+function parseCustomBudget(value: string) {
+  const values = value.replace(/[¥￥,\s]/g, "").match(/\d+/g);
+  if (!values?.length) return null;
+  const [first, second] = values.map(Number);
+  if (!Number.isFinite(first)) return null;
+  if (!second) return { min: 0, max: first };
+  return first < second ? { min: first, max: second } : { min: second, max: first };
+}
+
 export default function GiftWorkbench() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [stage, setStage] = useState<SheetStage>("input");
-  const [entryMode, setEntryMode] = useState<EntryMode>("friend");
-  const [friendId, setFriendId] = useState<(typeof demoFriends)[number]["id"]>(
-    demoFriends[0].id,
-  );
   const [file, setFile] = useState<File | null>(null);
-  const [occasion, setOccasion] =
-    useState<(typeof occasions)[number]>("生日");
+  const [occasion, setOccasion] = useState<(typeof occasions)[number] | "自定义">(
+    "生日",
+  );
   const [budgetIndex, setBudgetIndex] = useState(1);
-  const [city, setCity] = useState("重庆");
+  const [friendHandle, setFriendHandle] = useState("");
+  const [companionId, setCompanionId] = useState("mentor");
+  const [customOccasion, setCustomOccasion] = useState("");
+  const [customBudget, setCustomBudget] = useState("");
+  const [relationship, setRelationship] =
+    useState<(typeof relationships)[number] | "自定义">("情侣");
+  const [customRelationship, setCustomRelationship] = useState("");
   const [clueContext, setClueContext] = useState("");
   const [loadingIndex, setLoadingIndex] = useState(0);
   const [result, setResult] = useState<RecommendResponse | null>(null);
@@ -584,14 +606,12 @@ export default function GiftWorkbench() {
   const [intentContext, setIntentContext] =
     useState<IntentContext>(manualIntent);
 
-  const selectedFriend =
-    demoFriends.find((friend) => friend.id === friendId) || demoFriends[0];
+  const selectedFriend = demoFriends[0];
   const uploadPreview = useMemo(
     () => (file ? URL.createObjectURL(file) : ""),
     [file],
   );
-  const activePreview =
-    entryMode === "friend" ? selectedFriend.image : uploadPreview;
+  const activePreview = uploadPreview || selectedFriend.image;
 
   useEffect(
     () => () => {
@@ -641,8 +661,17 @@ export default function GiftWorkbench() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
-    if (entryMode === "upload" && !file) {
+    if (!file) {
       setError("先上传一张 TA 的桌面、房间、穿搭或公开作品截图");
+      return;
+    }
+
+    const budget =
+      budgetIndex === -1
+        ? parseCustomBudget(customBudget)
+        : budgetOptions[budgetIndex];
+    if (!budget || budget.max <= budget.min) {
+      setError("请输入有效预算，例如 ¥300–500");
       return;
     }
 
@@ -652,23 +681,33 @@ export default function GiftWorkbench() {
     setStage("loading");
 
     try {
-      const analysisFile =
-        entryMode === "friend" ? await friendImageAsFile() : file;
+      const analysisFile = file || (await friendImageAsFile());
       if (!analysisFile) throw new Error("没有可分析的视觉线索");
-      const budget = budgetOptions[budgetIndex];
       const form = new FormData();
       form.append("image", analysisFile);
-      form.append("occasion", occasion);
+      form.append(
+        "occasion",
+        occasion === "自定义" ? customOccasion || "自定义场合" : occasion,
+      );
       form.append("budgetMin", String(budget.min));
       form.append("budgetMax", String(budget.max));
-      form.append("city", city);
+      form.append("city", "重庆");
       form.append(
         "clueContext",
         [
-          entryMode === "friend"
-            ? `素材来自伴侣 ${selectedFriend.handle} 的模拟公开作品`
+          friendHandle || selectedFriend.handle
+            ? `送礼对象抖音号为 ${friendHandle || selectedFriend.handle}，素材来自模拟公开作品`
             : "素材来自用户主动上传的伴侣生活场景",
           intentContext.clue,
+          `用户与送礼对象的关系：${
+            relationship === "自定义"
+              ? customRelationship || "未说明"
+              : relationship
+          }`,
+          `已选择的送礼搭子：${
+            giftCompanions.find((companion) => companion.id === companionId)
+              ?.name || "未选择"
+          }`,
           clueContext,
         ]
           .filter(Boolean)
@@ -752,114 +791,86 @@ export default function GiftWorkbench() {
 
               {stage === "input" && (
                 <form className="sheet-scroll input-flow" onSubmit={submit}>
-                  <div
-                    className={`intent-context intent-${intentContext.source}`}
-                  >
-                    <span>
-                      <Icon name="spark" size={15} />
-                    </span>
-                    <div>
-                      <small>{intentContext.eyebrow}</small>
-                      <strong>{intentContext.title}</strong>
-                      <p>{intentContext.description}</p>
-                    </div>
-                  </div>
-                  <div className="entry-tabs" role="tablist">
-                    <button
-                      aria-selected={entryMode === "friend"}
-                      className={entryMode === "friend" ? "active" : ""}
-                      onClick={() => setEntryMode("friend")}
-                      role="tab"
-                      type="button"
-                    >
+                  <div className="recipient-field">
+                    <span>送给谁？</span>
+                    <label>
                       <Icon name="at" size={17} />
-                      选择抖音好友
-                      <em>DEMO</em>
-                    </button>
-                    <button
-                      aria-selected={entryMode === "upload"}
-                      className={entryMode === "upload" ? "active" : ""}
-                      onClick={() => setEntryMode("upload")}
-                      role="tab"
-                      type="button"
-                    >
-                      <Icon name="camera" size={17} />
-                      上传生活切片
-                    </button>
+                      <input
+                        aria-label="抖音好友或抖音号"
+                        onChange={(event) => setFriendHandle(event.target.value)}
+                        placeholder="输入抖音号或 @ 提及好友"
+                        value={friendHandle}
+                      />
+                    </label>
                   </div>
 
-                  {entryMode === "friend" ? (
-                    <div className="friend-section">
-                      <div className="section-title">
-                        <div>
-                          <strong>最近联系</strong>
-                          <small>仅分析对方公开发布的视觉线索</small>
-                        </div>
-                        <span>临时视角</span>
-                      </div>
-                      <div className="friend-list">
-                        {demoFriends.map((friend) => (
-                          <button
-                            className={
-                              friendId === friend.id ? "selected" : ""
-                            }
-                            key={friend.id}
-                            onClick={() => setFriendId(friend.id)}
-                            type="button"
-                          >
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img alt="" src={friend.image} />
-                            <div>
-                              <strong>{friend.name}</strong>
-                              <span>{friend.handle}</span>
-                              <small>
-                                {friend.note} · {friend.workCount} 条公开作品
-                              </small>
-                            </div>
-                            <i>
-                              {friendId === friend.id && (
-                                <Icon name="check" size={12} />
-                              )}
-                            </i>
-                          </button>
-                        ))}
+                  {/* 上传区（常驻）*/}
+                  <div className="upload-section">
+                    <input
+                      accept="image/jpeg,image/png,image/webp"
+                      hidden
+                      onChange={(event: ChangeEvent<HTMLInputElement>) =>
+                        acceptFile(event.target.files?.[0])
+                      }
+                      ref={fileInputRef}
+                      type="file"
+                    />
+                    <button
+                      className={uploadPreview ? "has-preview" : ""}
+                      onClick={() => fileInputRef.current?.click()}
+                      type="button"
+                    >
+                      {uploadPreview ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img alt="准备分析的视觉线索" src={uploadPreview} />
+                          <span>换一张</span>
+                        </>
+                      ) : (
+                        <>
+                          <i>
+                            <Icon name="camera" size={22} />
+                          </i>
+                          <strong>拍一张，或从相册选择</strong>
+                          <small>桌面 / 房间 / 穿搭 / 公开作品截图</small>
+                        </>
+                      )}
+                    </button>
+                    <p>图片只用于本次分析，不建立长期画像</p>
+                  </div>
+
+                  {/* 博主选择（常驻）*/}
+                  <div className="friend-section">
+                    <div className="section-title">
+                      <div>
+                        <strong>挑个懂送礼的搭子</strong>
+                        <small>博主选礼经验整理成不同专长的搭子</small>
                       </div>
                     </div>
-                  ) : (
-                    <div className="upload-section">
-                      <input
-                        accept="image/jpeg,image/png,image/webp"
-                        hidden
-                        onChange={(event: ChangeEvent<HTMLInputElement>) =>
-                          acceptFile(event.target.files?.[0])
-                        }
-                        ref={fileInputRef}
-                        type="file"
-                      />
-                      <button
-                        className={uploadPreview ? "has-preview" : ""}
-                        onClick={() => fileInputRef.current?.click()}
-                        type="button"
-                      >
-                        {uploadPreview ? (
-                          <>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img alt="准备分析的视觉线索" src={uploadPreview} />
-                            <span>换一张</span>
-                          </>
-                        ) : (
-                          <>
-                            <i>
-                              <Icon name="camera" size={22} />
-                            </i>
-                            <strong>拍一张，或从相册选择</strong>
-                            <small>桌面 / 房间 / 穿搭 / 公开作品截图</small>
-                          </>
-                        )}
-                      </button>
-                      <p>图片只用于本次分析，不建立长期画像</p>
+                    <div className="companion-list">
+                      {giftCompanions.map((companion) => (
+                        <button
+                          className={
+                            companionId === companion.id ? "selected" : ""
+                          }
+                          key={companion.id}
+                          onClick={() => setCompanionId(companion.id)}
+                          type="button"
+                        >
+                          <span aria-hidden="true">{companion.emoji}</span>
+                          <div>
+                            <strong>{companion.name}</strong>
+                            <small>{companion.description}</small>
+                          </div>
+                          <i>
+                            {companionId === companion.id && (
+                              <Icon name="check" size={12} />
+                            )}
+                          </i>
+                        </button>
+                      ))}
                     </div>
-                  )}
+                  </div>
 
                   <div className="quick-question">
                     <div className="section-title">
@@ -879,6 +890,24 @@ export default function GiftWorkbench() {
                           {item}
                         </button>
                       ))}
+                      {occasion === "自定义" ? (
+                        <input
+                          aria-label="自定义送礼场合"
+                          autoFocus
+                          className="inline-custom-input"
+                          maxLength={12}
+                          onChange={(event) => setCustomOccasion(event.target.value)}
+                          placeholder="输入场合"
+                          value={customOccasion}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setOccasion("自定义")}
+                          type="button"
+                        >
+                          自定义
+                        </button>
+                      )}
                     </div>
                   </div>
 
@@ -900,19 +929,67 @@ export default function GiftWorkbench() {
                           {item.label}
                         </button>
                       ))}
+                      {budgetIndex === -1 ? (
+                        <input
+                          aria-label="自定义预算"
+                          autoFocus
+                          className="inline-custom-input"
+                          onChange={(event) => setCustomBudget(event.target.value)}
+                          placeholder="¥300–500"
+                          value={customBudget}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setBudgetIndex(-1)}
+                          type="button"
+                        >
+                          自定义
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="quick-question relationship-question">
+                    <div className="section-title">
+                      <div>
+                        <strong>你和 TA 是什么关系？</strong>
+                      </div>
+                    </div>
+                    <div className="choice-row">
+                      {relationships.map((item) => (
+                        <button
+                          className={relationship === item ? "selected" : ""}
+                          key={item}
+                          onClick={() => setRelationship(item)}
+                          type="button"
+                        >
+                          {item}
+                        </button>
+                      ))}
+                      {relationship === "自定义" ? (
+                        <input
+                          aria-label="自定义关系"
+                          autoFocus
+                          className="inline-custom-input"
+                          maxLength={12}
+                          onChange={(event) =>
+                            setCustomRelationship(event.target.value)
+                          }
+                          placeholder="输入关系"
+                          value={customRelationship}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setRelationship("自定义")}
+                          type="button"
+                        >
+                          自定义
+                        </button>
+                      )}
                     </div>
                   </div>
 
                   <div className="compact-inputs">
-                    <label>
-                      <span>城市</span>
-                      <input
-                        aria-label="所在城市"
-                        maxLength={12}
-                        onChange={(event) => setCity(event.target.value)}
-                        value={city}
-                      />
-                    </label>
                     <label>
                       <span>补充一句（可选）</span>
                       <input
@@ -931,7 +1008,7 @@ export default function GiftWorkbench() {
 
                   <button className="start-analysis" type="submit">
                     <Icon name="spark" size={18} />
-                    从 TA 的视觉线索开始选礼
+                    开始推荐好物视频
                   </button>
                 </form>
               )}
@@ -944,9 +1021,9 @@ export default function GiftWorkbench() {
                     <div />
                     <span />
                     <small>
-                      {entryMode === "friend"
-                        ? `${selectedFriend.handle} · 公开作品`
-                        : "用户上传 · 生活切片"}
+                      {uploadPreview
+                        ? "用户上传 · 生活切片"
+                        : `${selectedFriend.handle} · 公开作品`}
                     </small>
                   </div>
                   <div className="loading-title">

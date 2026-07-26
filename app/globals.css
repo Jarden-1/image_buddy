@@ -394,57 +394,56 @@ a {
 .gift-capsule {
   position: absolute;
   z-index: 10;
-  right: 14px;
-  bottom: 202px;
+  top: calc(50% + 34px);
   left: 14px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 5px;
+  padding: 5px 10px;
   text-align: left;
-  border: 1px solid rgb(255 255 255 / 0.16);
-  border-radius: 15px;
-  background: rgb(15 15 15 / 0.74);
-  box-shadow: 0 12px 30px rgb(0 0 0 / 0.22);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  border-radius: 999px;
+  background: rgba(15, 15, 15, 0.78);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 0.22);
   animation: intent-in 0.42s cubic-bezier(0.2, 0.85, 0.25, 1.15) both;
-  backdrop-filter: blur(18px);
+  backdrop-filter: blur(14px);
 }
 
 .gift-capsule > span {
-  display: grid;
-  width: 31px;
-  height: 31px;
-  color: #fff;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--douyin-red), #ff6a4d);
-  place-items: center;
+  display: none;
 }
 
 .gift-capsule div {
   display: flex;
   min-width: 0;
   flex: 1;
-  flex-direction: column;
-  gap: 2px;
+  align-items: center;
+  gap: 5px;
 }
 
 .gift-capsule strong {
   overflow: hidden;
-  font-size: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  white-space: normal;
 }
 
 .gift-capsule small {
-  color: var(--douyin-cyan);
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  display: none;
 }
 
 .gift-capsule b {
   color: var(--douyin-cyan);
-  font-size: 11px;
+  font-size: 10px;
+  font-weight: 600;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .active-video-marker {
@@ -670,32 +669,101 @@ a {
   color: #ff7892;
 }
 
-.entry-tabs {
+.recipient-field {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  padding: 4px;
+  gap: 7px;
   margin-bottom: 17px;
-  border-radius: 13px;
-  background: rgb(255 255 255 / 0.055);
 }
 
-.entry-tabs button {
+.recipient-field > span {
+  color: rgb(255 255 255 / 0.72);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.recipient-field label {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 9px;
+  min-height: 42px;
+  padding: 0 2px;
+  color: rgb(255 255 255 / 0.58);
+  border-bottom: 1px solid rgb(255 255 255 / 0.24);
+}
+
+.recipient-field label:focus-within {
+  color: #fff;
+  border-color: var(--douyin-red);
+}
+
+.recipient-field input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: #fff;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 14px;
+}
+
+.recipient-field input::placeholder {
+  color: rgb(255 255 255 / 0.4);
+}
+
+.entry-tabs {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 17px;
+}
+
+.entry-tabs button,
+.entry-tabs label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   gap: 6px;
-  min-height: 40px;
+  min-height: 38px;
   color: rgb(255 255 255 / 0.45);
-  border-radius: 10px;
+  border-radius: 0;
   background: transparent;
   font-size: 12px;
 }
 
-.entry-tabs button.active {
+.entry-tabs button.active,
+.entry-tabs label.active {
   color: #fff;
-  background: #252525;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 0.2);
+  font-weight: 700;
+}
+
+.entry-tabs label {
+  min-width: 0;
+  flex: 1;
+  padding: 0 0 0 2px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.24);
+  cursor: text;
+}
+
+.entry-tabs label input {
+  width: 100%;
+  min-width: 0;
+  padding: 0;
+  color: inherit;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  font-size: 12px;
+}
+
+.entry-tabs label input::placeholder {
+  color: rgb(255 255 255 / 0.45);
+}
+
+.entry-tabs button {
+  flex: 0 0 auto;
+  padding: 0;
+  color: rgb(255 255 255 / 0.76);
   font-weight: 700;
 }
 
@@ -743,42 +811,45 @@ a {
   margin-bottom: 18px;
 }
 
-.friend-list {
+.companion-list {
   display: flex;
-  gap: 9px;
   overflow-x: auto;
-  padding: 1px 1px 4px;
+  gap: 8px;
+  padding-bottom: 3px;
   scrollbar-width: none;
 }
 
-.friend-list > button {
+.companion-list > button {
   position: relative;
   display: flex;
-  width: 260px;
-  min-width: 260px;
+  width: 176px;
+  min-width: 176px;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   padding: 9px;
   text-align: left;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: rgb(255 255 255 / 0.035);
 }
 
-.friend-list > button.selected {
+.companion-list > button.selected {
   border-color: rgb(254 44 85 / 0.48);
   background: rgb(254 44 85 / 0.075);
 }
 
-.friend-list img {
-  width: 54px;
-  height: 54px;
+.companion-list > button > span {
+  display: grid;
+  width: 31px;
+  height: 31px;
   flex: 0 0 auto;
-  border-radius: 11px;
-  object-fit: cover;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 0.07);
+  font-size: 16px;
+  place-items: center;
 }
 
-.friend-list button > div {
+.companion-list button > div {
   display: flex;
   min-width: 0;
   flex: 1;
@@ -786,27 +857,26 @@ a {
   gap: 2px;
 }
 
-.friend-list strong {
-  font-size: 13px;
-}
-
-.friend-list span {
+.companion-list strong {
   overflow: hidden;
-  color: rgb(255 255 255 / 0.48);
   font-size: 10px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.friend-list small {
+.companion-list small {
+  overflow: hidden;
   color: rgb(255 255 255 / 0.3);
-  font-size: 9px;
+  font-size: 8px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.friend-list i {
+.companion-list i {
   display: grid;
-  width: 19px;
-  height: 19px;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
   color: #fff;
   border: 1px solid rgb(255 255 255 / 0.15);
   border-radius: 50%;
@@ -815,7 +885,7 @@ a {
   place-items: center;
 }
 
-.friend-list button.selected i {
+.companion-list button.selected i {
   border-color: var(--douyin-red);
   background: var(--douyin-red);
 }
@@ -899,14 +969,18 @@ a {
 .choice-row,
 .budget-row {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 7px;
+  overflow-x: auto;
+  padding-bottom: 3px;
+  scrollbar-width: none;
 }
 
 .choice-row button,
 .budget-row button {
   min-height: 34px;
   padding: 0 12px;
+  flex: 0 0 auto;
   color: rgb(255 255 255 / 0.58);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -922,19 +996,33 @@ a {
   font-weight: 700;
 }
 
-.budget-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+.budget-row button {
+  min-width: 98px;
 }
 
-.budget-row button {
-  padding: 0 5px;
+.inline-custom-input {
+  width: 105px;
+  min-width: 105px;
+  height: 34px;
+  padding: 0 10px;
+  color: #fff;
+  border: 1px solid var(--douyin-red);
+  border-radius: 10px;
+  outline: 0;
+  background: rgb(254 44 85 / 0.1);
+  font-size: 11px;
+}
+
+.inline-custom-input::placeholder {
+  color: rgb(255 255 255 / 0.4);
+}
+
+.relationship-question {
+  margin-bottom: 17px;
 }
 
 .compact-inputs {
-  display: grid;
-  grid-template-columns: 0.66fr 1.34fr;
-  gap: 8px;
+  display: block;
   margin-bottom: 18px;
 }
 
